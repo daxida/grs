@@ -1,0 +1,23 @@
+[package]
+name = "grs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+
+[dependencies]
+clap = "4.5.23"
+colored = "2.2.0"
+grac = { git = "https://github.com/daxida/grac" }
+itertools = "0.13.0"
+similar = "2.6.0"
+strum = "0.26.3"
+strum_macros = "0.26.4"
+unicode-normalization = "0.1.24"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "bench"
+harness = false
