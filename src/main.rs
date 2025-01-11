@@ -338,7 +338,7 @@ fn parse_args() -> clap::ArgMatches {
         .about("Check for a variety of spelling mistakes in Greek text.")
         .arg(
             Arg::new("files")
-                .help("Files process. Anything other than .txt files will be ignored.")
+                .help("Files to process. Anything other than .txt files will be ignored.")
                 .num_args(1..)
                 .value_parser(clap::value_parser!(PathBuf)),
         )
@@ -373,6 +373,12 @@ fn parse_args() -> clap::ArgMatches {
                 .long("statistics")
                 .action(clap::ArgAction::SetTrue),
         )
+        // For convenience
+        .arg(
+            Arg::new("to-monotonic")
+                .long("to-monotonic")
+                .action(clap::ArgAction::SetTrue),
+        )
         .get_matches()
 }
 
@@ -401,6 +407,7 @@ fn find_text_files_in_tests() -> Result<Vec<PathBuf>, ExitStatus> {
     Ok(text_files)
 }
 
+// TODO: run_for_file
 fn run() -> Result<ExitStatus, ExitStatus> {
     let args = parse_args();
 
@@ -410,6 +417,20 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         .filter(|file| file.extension().and_then(|ext| ext.to_str()) == Some("txt"))
         .collect::<Vec<_>>();
     // let text_files = find_text_files_in_tests()?;
+
+    if args.get_flag("to-monotonic") {
+        for file in text_files.iter() {
+            let text = std::fs::read_to_string(file)
+                .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
+            let monotonic = grac::to_mono(&text);
+            if let Err(err) = std::fs::write(file, &monotonic) {
+                eprintln!("Failed to write to file {:?}: {}", file, err);
+                return Err(ExitStatus::Failure);
+            }
+        }
+        println!("Successfully converted to monotonic.");
+        return Ok(ExitStatus::Success);
+    }
 
     let fix_flag = args.get_flag("fix");
     if fix_flag {
