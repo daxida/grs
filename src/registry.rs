@@ -3,6 +3,7 @@ use strum_macros::EnumIter;
 #[derive(EnumIter, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rule {
     MissingDoubleAccents,
+    MissingAccentCapital,
     DuplicatedWord,
     AddFinalN,
     RemoveFinalN,
@@ -26,6 +27,7 @@ impl std::fmt::Debug for Rule {
 fn stringify(rule: &Rule) -> &str {
     match rule {
         Rule::MissingDoubleAccents => "MissingDoubleAccents",
+        Rule::MissingAccentCapital => "MissingAccentCapital",
         Rule::DuplicatedWord => "DuplicatedWord",
         Rule::AddFinalN => "AddFinalN",
         Rule::RemoveFinalN => "RemoveFinalN",
@@ -45,6 +47,7 @@ fn stringify_code(rule: &Rule) -> String {
 pub fn rule_from_code(code: &str) -> Rule {
     match code {
         "MDA" => Rule::MissingDoubleAccents,
+        "MAC" => Rule::MissingAccentCapital,
         "DW" => Rule::DuplicatedWord,
         "AFN" => Rule::AddFinalN,
         "RFN" => Rule::RemoveFinalN,

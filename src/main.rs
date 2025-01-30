@@ -17,6 +17,7 @@
 * clippy?
 */
 
+use grs::missing_accent_capital::missing_accent_capital;
 use grs::range::TextRange;
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -79,6 +80,9 @@ fn check_token_with_context<'a>(
 
     if config.contains(&Rule::MonosyllableAccented) {
         monosyllable_accented(token, doc, &mut diagnostics);
+    }
+    if config.contains(&Rule::MissingAccentCapital) {
+        missing_accent_capital(token, doc, &mut diagnostics);
     }
     if config.contains(&Rule::MultisyllableNotAccented) {
         multisyllable_not_accented(token, doc, &mut diagnostics);
@@ -479,7 +483,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         }
 
         if had_error {
-            // println!("{}", file.to_str().unwrap().purple());
+            println!("{}", file.to_str().unwrap().purple());
             // header
             if diff {
                 // I dont know how to remove colors

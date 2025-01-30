@@ -26,8 +26,8 @@ pub const PRON: &[&str] = &[
 /// Punctuation that prevents a positive diagnostic of an error on the
 /// second token.
 ///
-/// From \" onward there are from testing against the wikidump,
-/// and even if rare, they make sense to keep.
+/// From \" onward they come from testing against the wikidump,
+/// and, even if rare, they make sense to keep.
 #[rustfmt::skip]
 const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
     "...", "…", "«", "\"",

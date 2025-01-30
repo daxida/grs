@@ -1,8 +1,7 @@
 use colored::Colorize;
 use similar::{ChangeTag, TextDiff};
 
-/// From ruff CodeDiff
-
+// From ruff CodeDiff
 pub struct CodeDiff<'a> {
     diff: TextDiff<'a, 'a, 'a, str>,
     header: Option<(&'a str, &'a str)>,
