@@ -17,17 +17,16 @@
 * clippy?
 */
 
-use grs::missing_accent_capital::missing_accent_capital;
 use grs::range::TextRange;
+use grs::rules::{
+    add_final_n, duplicated_word, missing_accent_capital, missing_double_accents,
+    monosyllable_accented, multisyllable_not_accented, remove_final_n,
+};
 use itertools::Itertools;
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 
-use grs::accents::*;
 use grs::diagnostic::*;
-use grs::duplicated_word::*;
-use grs::final_n::*;
-use grs::missing_double_accents::*;
 use grs::registry::*;
 use grs::text_diff::*;
 use grs::tokenizer::*;
