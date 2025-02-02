@@ -30,7 +30,7 @@ pub const PRON: &[&str] = &[
 /// and, even if rare, they make sense to keep.
 #[rustfmt::skip]
 const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
-    "...", "…", "«", "\"",
+    "...", "…", "«", "\"", "“",
     // Testing
     "[", "{", "*", "<", "#", "}"
 ];
@@ -68,6 +68,7 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
+    // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
     if ntoken.punct || !PRON.contains(&ntoken.text) {
         return None;
@@ -192,4 +193,5 @@ mod tests {
 
     test_no_errors!(test_numbers, "ανακαλύφθηκε το 1966");
     test_no_errors!(test_newline_asterisk, "διακρίνονται σε\n*");
+    test_no_errors!(test_before_quote_marks, "διάρκεια του “πειράματος”");
 }

@@ -17,10 +17,9 @@
 * clippy?
 */
 
-use grs::range::TextRange;
 use grs::rules::{
     add_final_n, duplicated_word, missing_accent_capital, missing_double_accents,
-    monosyllable_accented, multisyllable_not_accented, remove_final_n,
+    monosyllable_accented, multisyllable_not_accented, outdated_spelling, remove_final_n,
 };
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -34,39 +33,6 @@ use grs::tokenizer::*;
 use clap::{Arg, Command};
 use colored::Colorize;
 use std::path::PathBuf;
-
-const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
-    ("κρεββάτι", "κρεβάτι"),
-    ("Κρεββάτι", "Κρεβάτι"),
-    ("εξ άλλου", "εξάλλου"),
-    ("Εξ άλλου", "Εξάλλου"),
-    ("εξ αιτίας", "εξαιτίας"),
-    ("Εξ αιτίας", "Εξαιτίας"),
-];
-
-/// Outdated spelling of strings.
-///
-/// Two caveats:
-/// - Without regex or some more logic, this is agnostic of word boundaries
-///   and could replace chunks inside words. This is fine.
-/// - The const table needs manual adding of uppercase variants since the
-///   prize of casting .to_lowercase() is too big, and I have not figured out
-///   how to build a const array with capitalized variants at compile time.
-fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
-    // Probably the other order is a better choice
-    for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE.iter() {
-        // There must be sth better without break
-        if let Some((start, _)) = text.match_indices(target).next() {
-            diagnostics.push(Diagnostic {
-                kind: Rule::OutdatedSpelling,
-                fix: Some(Fix {
-                    replacement: destination.to_string(),
-                    range: TextRange::new(start, start + target.len()),
-                }),
-            });
-        }
-    }
-}
 
 type Config<'a> = &'a [Rule];
 
@@ -448,7 +414,8 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         println!("Diff is enabled.");
     }
 
-    let mut config_str: Vec<String> = Vec::new();
+    // let mut config_str: Vec<String> = Vec::new();
+    let mut config_str: Vec<String> = ["MDA", "OS"].iter().map(|s| s.to_string()).collect();
     // Add all rules
     // config_str = Rule::iter().map(|rule| rule.code().to_string()).collect();
     if let Some(selection) = args.get_one::<String>("select") {
@@ -458,6 +425,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             config_str = selection.split(',').map(|c| c.to_string()).collect();
         }
     }
+
     // Does not crash if rules to ignore were not in config.
     if let Some(selection) = args.get_one::<String>("ignore") {
         let ignore_rules: Vec<String> = selection.split(',').map(|c| c.to_string()).collect();
@@ -465,7 +433,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     }
 
     println!("Config: {:?}", config_str);
-    // Convert to a vec or rules
+    // Convert to a Vec<Rules>
     let config: Vec<Rule> = config_str.iter().map(|code| rule_from_code(code)).collect();
 
     let mut global_statistics_counter = HashMap::new();
@@ -482,7 +450,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         }
 
         if had_error {
-            println!("{}", file.to_str().unwrap().purple());
+            // println!("{}", file.to_str().unwrap().purple());
             // header
             if diff {
                 // I dont know how to remove colors
@@ -539,7 +507,7 @@ fn main() {
     let fr = std::time::Instant::now();
     let _ = run();
     let to = std::time::Instant::now();
-    println!("Execution time: {:?}", to.duration_since(fr));
+    println!("Execution time: {:.2?}", to.duration_since(fr));
 }
 
 // For ad-hoc tests
