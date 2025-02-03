@@ -1,7 +1,7 @@
-use crate::constants::ABBREVIATION_MARKS;
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
+use grac::constants::APOSTROPHES;
 use grac::{
     add_acute_at, ends_with_diphthong, has_diacritic, remove_diacritic_at, syllabify_el,
     syllabify_el_mode, Diacritic, Synizesis,
@@ -36,7 +36,7 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     let ntoken = doc.get(token.index + 1)?;
     if token.whitespace.is_empty() && ntoken.punct {
         if let Some(npunct_first_char) = ntoken.text.chars().next() {
-            if ABBREVIATION_MARKS.contains(&npunct_first_char) {
+            if APOSTROPHES.contains(&npunct_first_char) {
                 return None;
             }
             // A final period requires checking that the next word is capitalized
@@ -103,7 +103,7 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
         if ptoken.punct {
             if let Some(npunct_first_char) = ptoken.text.chars().next() {
-                if ABBREVIATION_MARKS.contains(&npunct_first_char) {
+                if APOSTROPHES.contains(&npunct_first_char) {
                     return None;
                 }
             }
@@ -112,7 +112,7 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if let Some(ntoken) = doc.get(token.index + 1) {
         if ntoken.punct {
             if let Some(npunct_first_char) = ntoken.text.chars().next() {
-                if ABBREVIATION_MARKS.contains(&npunct_first_char) {
+                if APOSTROPHES.contains(&npunct_first_char) {
                     return None;
                 }
             }

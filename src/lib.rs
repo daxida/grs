@@ -1,4 +1,3 @@
-pub mod constants;
 pub mod diagnostic;
 pub mod range;
 pub mod registry;

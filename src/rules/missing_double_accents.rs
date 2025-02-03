@@ -1,8 +1,8 @@
-use crate::constants::ABBREVIATION_MARKS;
 use crate::diagnostic::*;
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 use grac::add_acute_at;
+use grac::constants::APOSTROPHES;
 use grac::diacritic_pos;
 use grac::Diacritic;
 
@@ -87,7 +87,7 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         if !STOKEN_AMBIGUOUS_INITIAL_PUNCT
             .iter()
             .any(|punct| nntoken.text.starts_with(punct))
-            && !ABBREVIATION_MARKS.contains(&fst_char)
+            && !APOSTROPHES.contains(&fst_char)
             // Numbers too should be ignored:
             // Ex. "ανακαλύφθηκε το 1966" is correct.
             && !fst_char.is_numeric()
