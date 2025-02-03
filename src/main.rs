@@ -30,7 +30,7 @@ use grs::registry::*;
 use grs::text_diff::*;
 use grs::tokenizer::*;
 
-use clap::{Arg, Command};
+use clap::Parser;
 use colored::Colorize;
 use std::path::PathBuf;
 
@@ -302,53 +302,37 @@ fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, Fi
     (final_transformed, messages, fixed)
 }
 
-fn parse_args() -> clap::ArgMatches {
-    Command::new("Greek spell checker")
-        .about("Check for a variety of spelling mistakes in Greek text.")
-        .arg(
-            Arg::new("files")
-                .help("Files to process. Anything other than .txt files will be ignored.")
-                .num_args(1..)
-                .value_parser(clap::value_parser!(PathBuf)),
-        )
-        .arg(
-            Arg::new("fix")
-                .help("Replace the input file")
-                .long("fix")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("diff")
-                .help("Finish me")
-                .long("diff")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("select")
-                .help("Specify which types of mistakes to check.")
-                .long("select")
-                .num_args(1)
-                .value_parser(clap::builder::NonEmptyStringValueParser::new()),
-        )
-        .arg(
-            Arg::new("ignore")
-                .help("Specify which types of mistakes to ignore.")
-                .long("ignore")
-                .num_args(1)
-                .value_parser(clap::builder::NonEmptyStringValueParser::new()),
-        )
-        .arg(
-            Arg::new("statistics")
-                .long("statistics")
-                .action(clap::ArgAction::SetTrue),
-        )
-        // For convenience
-        .arg(
-            Arg::new("to-monotonic")
-                .long("to-monotonic")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .get_matches()
+#[derive(Parser, Debug)]
+#[command(name = "grs", about = "Grs: a rule-based speel checker for Greek.")]
+pub struct Args {
+    /// Files to process. Anything other than .txt files will be ignored.
+    #[arg(value_parser, required = true)]
+    files: Vec<PathBuf>,
+
+    /// Replace the input file.
+    #[arg(long)]
+    fix: bool,
+
+    /// Show differences between original and corrected text.
+    #[arg(long)]
+    diff: bool,
+
+    /// Specify which types of mistakes to check.
+    #[arg(long)]
+    select: Option<String>,
+
+    /// Specify which types of mistakes to ignore.
+    #[arg(long)]
+    ignore: Option<String>,
+
+    /// Show statistics after processing.
+    #[arg(long)]
+    statistics: bool,
+
+    /// Convert text to monotonic Greek.
+    // Does this belong to this project?
+    #[arg(long = "to-monotonic")]
+    to_monotonic: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -378,16 +362,16 @@ fn find_text_files_in_tests() -> Result<Vec<PathBuf>, ExitStatus> {
 
 // TODO: run_for_file
 fn run() -> Result<ExitStatus, ExitStatus> {
-    let args = parse_args();
+    let args = Args::parse();
 
     let text_files = args
-        .get_many::<PathBuf>("files")
-        .ok_or(ExitStatus::Failure)?
+        .files
+        .iter()
         .filter(|file| file.extension().and_then(|ext| ext.to_str()) == Some("txt"))
         .collect::<Vec<_>>();
     // let text_files = find_text_files_in_tests()?;
 
-    if args.get_flag("to-monotonic") {
+    if args.to_monotonic {
         for file in text_files.iter() {
             let text = std::fs::read_to_string(file)
                 .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
@@ -401,16 +385,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         return Ok(ExitStatus::Success);
     }
 
-    let fix_flag = args.get_flag("fix");
-    if fix_flag {
+    if args.fix {
         println!("Fix flag is enabled.");
     }
-    let statistics = args.get_flag("statistics");
-    if statistics {
+    if args.statistics {
         println!("Statistics is enabled.");
     }
-    let diff = args.get_flag("diff");
-    if diff {
+    if args.diff {
         println!("Diff is enabled.");
     }
 
@@ -418,7 +399,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     let mut config_str: Vec<String> = ["MDA", "OS"].iter().map(|s| s.to_string()).collect();
     // Add all rules
     // config_str = Rule::iter().map(|rule| rule.code().to_string()).collect();
-    if let Some(selection) = args.get_one::<String>("select") {
+    if let Some(selection) = args.select {
         if selection == "ALL" {
             config_str = Rule::iter().map(|rule| rule.to_string()).collect();
         } else {
@@ -427,7 +408,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     }
 
     // Does not crash if rules to ignore were not in config.
-    if let Some(selection) = args.get_one::<String>("ignore") {
+    if let Some(selection) = args.ignore {
         let ignore_rules: Vec<String> = selection.split(',').map(|c| c.to_string()).collect();
         config_str.retain(|rule| !ignore_rules.contains(rule));
     }
@@ -441,7 +422,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     for file in text_files.iter() {
         let text = std::fs::read_to_string(file)
             .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
-        let (_fixed, messages, statistics_counter) = fix(&text, &config, statistics);
+        let (_fixed, messages, statistics_counter) = fix(&text, &config, args.statistics);
 
         let mut had_error = false;
         for (key, value) in statistics_counter {
@@ -452,16 +433,16 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         if had_error {
             // println!("{}", file.to_str().unwrap().purple());
             // header
-            if diff {
+            if args.diff {
                 // I dont know how to remove colors
                 let text_diff = CodeDiff::new(&text, &_fixed);
                 println!("{}", text_diff);
-            } else if !statistics {
+            } else if !args.statistics {
                 println!("{}", messages.join("\n"));
             }
         }
 
-        if fix_flag {
+        if args.fix {
             // Overwrite the file with the modified content
             if let Err(err) = std::fs::write(file, &_fixed) {
                 eprintln!("Failed to write to file {:?}: {}", file, err);
@@ -469,7 +450,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         }
     }
 
-    if statistics {
+    if args.statistics {
         let padding = global_statistics_counter
             .values()
             .map(|k| k.to_string().len())
@@ -494,7 +475,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     // Should probably count those with fixes...
     if n_errors == 0 {
         println!("No errors!");
-    } else if fix_flag {
+    } else if args.fix {
         println!("Fixed {} errors.", format!("{}", n_errors).red().bold());
     } else {
         println!("Detected {} errors.", format!("{}", n_errors).red().bold());
