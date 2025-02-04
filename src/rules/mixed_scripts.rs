@@ -3,7 +3,7 @@ use crate::registry::Rule;
 use crate::tokenizer::is_greek_char;
 use crate::tokenizer::{Doc, Token};
 
-const LATIN_TO_GREEK: [(char, char); 21] = [
+const LATIN_TO_GREEK: [(char, char); 22] = [
     ('A', 'Α'),
     ('Á', 'Ά'),
     ('B', 'Β'),
@@ -25,15 +25,11 @@ const LATIN_TO_GREEK: [(char, char); 21] = [
     ('ó', 'ό'),
     ('u', 'υ'),
     ('v', 'ν'),
+    // Not so ambiguous but can happen
+    ('í', 'ί'),
 ];
 
-/// Checks if a token, which is expected to be in Greek, contains any Latin characters.
-/// Ex. νέo (the o is the latin letter o)
-pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if token.greek || token.punct {
-        return;
-    }
-
+fn mixed_scripts_opt(token: &Token) -> Option<()> {
     let mut has_latin = false;
     let mut has_greek = false;
     for ch in token.text.chars() {
@@ -41,10 +37,31 @@ pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic
             has_greek = true;
         } else if LATIN_TO_GREEK.iter().any(|(latin, _)| ch == *latin) {
             has_latin = true;
+        } else if !ch.is_alphabetic() {
+            // If ch is not alphabetic, avoid diagnosing an error, since
+            // it can be anything:
+            // - μτφδ|en|el|text=1|radio
+            // - Αρχείο:Gravestone
+            // - B-λεμφοκύτταρο,
+            // - σελ.629@books.google]
+            // etc.
+            return None;
         }
     }
 
     if has_latin && has_greek {
+        Some(())
+    } else {
+        None
+    }
+}
+
+/// Checks if a token, which is expected to be in Greek, contains any Latin characters.
+/// Ex. νέo (the o is the latin letter o)
+pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
+    debug_assert!(!token.greek && !token.punct);
+
+    if mixed_scripts_opt(token).is_some() {
         let mut fixed = String::new();
         for ch in token.text.chars() {
             let fixed_ch = LATIN_TO_GREEK
@@ -69,21 +86,20 @@ mod test {
     use super::*;
     use crate::tokenizer::tokenize;
 
-    #[test]
-    fn test_mixed_scripts() {
-        let text = "νέo";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        mixed_scripts(&doc[0], &doc, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
+    macro_rules! test_empty_diagnostics {
+        ($name:ident, $text:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let text = $text;
+                let doc = tokenize(text);
+                let mut diagnostics = Vec::new();
+                mixed_scripts(&doc[0], &doc, &mut diagnostics);
+                assert_eq!(diagnostics.is_empty(), $expected);
+            }
+        };
     }
 
-    #[test]
-    fn test_mixed_scripts_two() {
-        let text = "Áλλα";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        mixed_scripts(&doc[0], &doc, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-    }
+    test_empty_diagnostics!(lowercase_o, "νέo", false);
+    test_empty_diagnostics!(uppercase_a, "Áλλα", false);
+    test_empty_diagnostics!(lowercase_i, "Χωρíς", false);
 }

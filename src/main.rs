@@ -61,10 +61,6 @@ fn check_token_with_context<'a>(
     if config.contains(&Rule::DuplicatedWord) {
         duplicated_word(token, doc, &mut diagnostics);
     }
-    // Does not use doc
-    if config.contains(&Rule::MixedScripts) {
-        mixed_scripts(token, doc, &mut diagnostics);
-    }
 
     diagnostics
 }
@@ -85,7 +81,7 @@ fn check(text: &str, config: Config) -> Vec<Diagnostic> {
 
     let doc = tokenize(text);
 
-    for token in doc.iter().filter(|token| !token.punct && token.greek) {
+    for token in doc.iter().filter(|token| !token.punct) {
         // TODO: A better tokenizer require locator > no but do it for printing lines
 
         // Run the token-based rules.
@@ -93,7 +89,14 @@ fn check(text: &str, config: Config) -> Vec<Diagnostic> {
         // diagnostics.extend(check_token(token, config));
 
         // Run the token-context-based rules.
-        diagnostics.extend(check_token_with_context(token, &doc, config));
+        if token.greek {
+            diagnostics.extend(check_token_with_context(token, &doc, config));
+        } else {
+            // Does not use doc
+            if config.contains(&Rule::MixedScripts) {
+                mixed_scripts(token, &doc, &mut diagnostics);
+            }
+        }
     }
 
     diagnostics
@@ -116,6 +119,7 @@ fn cmp_fix(rule1: Rule, rule2: Rule, fix1: &Fix, fix2: &Fix) -> std::cmp::Orderi
 /// Highlights the (start, end) range in red.
 ///
 /// TODO: continue printing if we face a period that turns out to be an ellipsis
+/// TODO: replace \n with something less intrusive (cf. if the text is only "Χωρίς\n")
 fn get_context_message(text: &str, fix: &Fix) -> String {
     let start = fix.range.start();
     let end = fix.range.end();
@@ -286,7 +290,8 @@ fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, Fi
         }
 
         if let Some(last_pos) = last_pos {
-            assert!(last_pos < transformed.len());
+            // May not be true if the text is composed of only one word: "Χωρίς\n"
+            // assert!(last_pos < transformed.len());
             transformed_this_iter.push_str(&transformed[last_pos..]);
         }
 
