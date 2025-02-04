@@ -8,6 +8,7 @@ pub const fn is_greek_extended_char(ch: char) -> bool {
     ch >= '\u{1F00}' && ch <= '\u{1FFF}'
 }
 
+// TODO: This should be in grac
 pub const fn is_greek_char(ch: char) -> bool {
     is_greek_and_coptic_char(ch) || is_greek_extended_char(ch)
 }

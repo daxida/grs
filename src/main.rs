@@ -17,18 +17,15 @@
 * clippy?
 */
 
-use grs::rules::{
-    add_final_n, duplicated_word, missing_accent_capital, missing_double_accents,
-    monosyllable_accented, multisyllable_not_accented, outdated_spelling, remove_final_n,
-};
 use itertools::Itertools;
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 
-use grs::diagnostic::*;
-use grs::registry::*;
-use grs::text_diff::*;
-use grs::tokenizer::*;
+use grs::diagnostic::{Diagnostic, Fix};
+use grs::registry::{Rule, RULES};
+use grs::rules::*;
+use grs::text_diff::CodeDiff;
+use grs::tokenizer::{tokenize, Doc, Token};
 
 use clap::Parser;
 use colored::Colorize;
@@ -63,6 +60,10 @@ fn check_token_with_context<'a>(
     }
     if config.contains(&Rule::DuplicatedWord) {
         duplicated_word(token, doc, &mut diagnostics);
+    }
+    // Does not use doc
+    if config.contains(&Rule::MixedScripts) {
+        mixed_scripts(token, doc, &mut diagnostics);
     }
 
     diagnostics
@@ -318,8 +319,8 @@ pub struct Args {
     diff: bool,
 
     /// Specify which types of mistakes to check.
-    #[arg(long)]
-    select: Option<String>,
+    #[arg(long, value_delimiter = ',')]
+    select: Option<Vec<String>>,
 
     /// Specify which types of mistakes to ignore.
     #[arg(long)]
@@ -395,17 +396,16 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         println!("Diff is enabled.");
     }
 
-    // let mut config_str: Vec<String> = Vec::new();
-    let mut config_str: Vec<String> = ["MDA", "OS"].iter().map(|s| s.to_string()).collect();
-    // Add all rules
-    // config_str = Rule::iter().map(|rule| rule.code().to_string()).collect();
-    if let Some(selection) = args.select {
-        if selection == "ALL" {
-            config_str = Rule::iter().map(|rule| rule.to_string()).collect();
-        } else {
-            config_str = selection.split(',').map(|c| c.to_string()).collect();
+    let mut config_str: Vec<String> = match args.select {
+        None => ["MDA", "OS"].iter().map(|s| s.to_string()).collect(),
+        Some(selection) => {
+            if selection.contains(&"ALL".to_string()) {
+                Rule::iter().map(|rule| rule.to_string()).collect()
+            } else {
+                selection
+            }
         }
-    }
+    };
 
     // Does not crash if rules to ignore were not in config.
     if let Some(selection) = args.ignore {
@@ -413,9 +413,27 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         config_str.retain(|rule| !ignore_rules.contains(rule));
     }
 
-    println!("Config: {:?}", config_str);
     // Convert to a Vec<Rules>
-    let config: Vec<Rule> = config_str.iter().map(|code| rule_from_code(code)).collect();
+    println!("Config: {:?}", config_str);
+    // TODO: This should be done at CLI parsing
+    let config_res: Result<Vec<Rule>, ExitStatus> = config_str
+        .iter()
+        .map(|code| {
+            code.parse::<Rule>().map_err(|err| {
+                // Print all rules and exit
+                eprintln!(
+                    "{}\n  [possible values: {}]",
+                    err,
+                    RULES
+                        .iter()
+                        .map(|(code, _)| code.to_string().green())
+                        .join(", ")
+                );
+                ExitStatus::Error
+            })
+        })
+        .collect();
+    let config = config_res?;
 
     let mut global_statistics_counter = HashMap::new();
 
@@ -509,7 +527,7 @@ mod tests {
         let config_str = vec!["MA"];
         let config: Vec<Rule> = config_str
             .iter()
-            .map(|code| rule_from_code(code))
+            .map(|code| code.parse::<Rule>().unwrap())
             .collect::<Vec<_>>();
 
         println!("Text: '{}'", &text);

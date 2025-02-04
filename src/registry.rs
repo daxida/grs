@@ -10,6 +10,36 @@ pub enum Rule {
     OutdatedSpelling,
     MonosyllableAccented,
     MultisyllableNotAccented,
+    MixedScripts,
+}
+
+// This is probably slower than using a match statement in Rule::FromStr
+// but it has the advantage of being reusable in other parts of the code,
+// like when returning a list of codes if an non existent code is passed
+// to --select via the CLI.
+pub const RULES: &[(&str, Rule)] = &[
+    ("MDA", Rule::MissingDoubleAccents),
+    ("MAC", Rule::MissingAccentCapital),
+    ("DW", Rule::DuplicatedWord),
+    ("AFN", Rule::AddFinalN),
+    ("RFN", Rule::RemoveFinalN),
+    ("OS", Rule::OutdatedSpelling),
+    ("MA", Rule::MonosyllableAccented),
+    ("MNA", Rule::MultisyllableNotAccented),
+    ("MS", Rule::MixedScripts),
+];
+
+impl std::str::FromStr for Rule {
+    type Err = String;
+
+    fn from_str(code: &str) -> Result<Self, Self::Err> {
+        for (rule_code, rule) in RULES.iter() {
+            if code == *rule_code {
+                return Ok(*rule);
+            }
+        }
+        Err(format!("Unknown rule code: {}", code))
+    }
 }
 
 impl std::fmt::Display for Rule {
@@ -34,6 +64,7 @@ fn stringify(rule: &Rule) -> &str {
         Rule::OutdatedSpelling => "OutdatedSpelling",
         Rule::MonosyllableAccented => "MonosyllableAccented",
         Rule::MultisyllableNotAccented => "MultisyllableNotAccented",
+        Rule::MixedScripts => "MixedScripts",
     }
 }
 
@@ -42,18 +73,4 @@ fn stringify_code(rule: &Rule) -> String {
         .chars()
         .filter(|c| c.is_uppercase())
         .collect()
-}
-
-pub fn rule_from_code(code: &str) -> Rule {
-    match code {
-        "MDA" => Rule::MissingDoubleAccents,
-        "MAC" => Rule::MissingAccentCapital,
-        "DW" => Rule::DuplicatedWord,
-        "AFN" => Rule::AddFinalN,
-        "RFN" => Rule::RemoveFinalN,
-        "OS" => Rule::OutdatedSpelling,
-        "MA" => Rule::MonosyllableAccented,
-        "MNA" => Rule::MultisyllableNotAccented,
-        _ => panic!("Unknown rule code: {}", code),
-    }
 }
