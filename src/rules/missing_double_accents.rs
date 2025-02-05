@@ -40,7 +40,7 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
 const STOKEN_SEPARATOR_WORDS: &[&str] = &[
     "και", "κι", "όταν", 
     // Testing
-    "του", "με",
+    "με",
 ];
 
 // https://el.wiktionary.org/wiki/το
@@ -194,4 +194,5 @@ mod tests {
     test_no_errors!(test_numbers, "ανακαλύφθηκε το 1966");
     test_no_errors!(test_newline_asterisk, "διακρίνονται σε\n*");
     test_no_errors!(test_before_quote_marks, "διάρκεια του “πειράματος”");
+    test_no_errors!(test_me_tou, "περισσότερο με του αλόγου");
 }

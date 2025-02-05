@@ -250,7 +250,7 @@ checksum = "60b1af1c220855b6ceac025d3f6ecdd2b7c4894bfe9cd9bda4fbb4bc7c0d4cf0"
 [[package]]
 name = "grac"
 version = "0.1.0"
-source = "git+https://github.com/daxida/grac#0d36ff9a3155658eb2978f105d96981e8a0155da"
+source = "git+https://github.com/daxida/grac#db47ee017a1bf13aa29b7c0cf3f437be2cd61fbc"
 dependencies = [
  "aho-corasick",
  "phf",
