@@ -11,6 +11,7 @@ pub enum Rule {
     MonosyllableAccented,
     MultisyllableNotAccented,
     MixedScripts,
+    AmbiguousChar,
 }
 
 // This is probably slower than using a match statement in Rule::FromStr
@@ -27,6 +28,7 @@ pub const RULES: &[(&str, Rule)] = &[
     ("MA", Rule::MonosyllableAccented),
     ("MNA", Rule::MultisyllableNotAccented),
     ("MS", Rule::MixedScripts),
+    ("AC", Rule::AmbiguousChar),
 ];
 
 impl std::str::FromStr for Rule {
@@ -65,6 +67,7 @@ fn stringify(rule: &Rule) -> &str {
         Rule::MonosyllableAccented => "MonosyllableAccented",
         Rule::MultisyllableNotAccented => "MultisyllableNotAccented",
         Rule::MixedScripts => "MixedScripts",
+        Rule::AmbiguousChar => "AmbiguousChar",
     }
 }
 
