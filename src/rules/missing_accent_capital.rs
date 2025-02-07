@@ -1,9 +1,9 @@
-use crate::diagnostic::*;
+use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
+use grac::add_acute_at;
+use grac::has_any_diacritic;
 use grac::syllabify_el;
-use grac::Diacritic;
-use grac::{add_acute_at, has_diacritic};
 
 /// The first character is uppercase and the rest are lowercase.
 fn is_capitalized(s: &str) -> bool {
@@ -15,19 +15,6 @@ fn is_capitalized(s: &str) -> bool {
         return chars.all(|c| c.is_lowercase());
     }
     false
-}
-
-// TODO: move to grac
-fn has_any_diacritic(s: &str) -> bool {
-    [
-        Diacritic::ACUTE,
-        Diacritic::GRAVE,
-        Diacritic::ROUGH,
-        Diacritic::SMOOTH,
-        Diacritic::CIRCUMFLEX,
-    ]
-    .iter()
-    .any(|diacritic| has_diacritic(s, *diacritic))
 }
 
 // It is frequent to see in newspaper the french rule where
