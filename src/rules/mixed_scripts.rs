@@ -1,7 +1,7 @@
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
-use crate::tokenizer::is_greek_char;
 use crate::tokenizer::{Doc, Token};
+use grac::is_greek_char;
 
 const LATIN_TO_GREEK: [(char, char); 22] = [
     ('A', 'Α'),

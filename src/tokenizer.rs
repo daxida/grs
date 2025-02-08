@@ -1,24 +1,5 @@
 use crate::range::TextRange;
-
-const fn is_greek_and_coptic_char(ch: char) -> bool {
-    ch >= '\u{0370}' && ch <= '\u{03FF}'
-}
-
-pub const fn is_greek_extended_char(ch: char) -> bool {
-    ch >= '\u{1F00}' && ch <= '\u{1FFF}'
-}
-
-// TODO: This should be in grac
-pub const fn is_greek_char(ch: char) -> bool {
-    is_greek_and_coptic_char(ch) || is_greek_extended_char(ch)
-}
-
-// DONE: swap order
-// TODO: write this in grac too
-pub fn is_greek_word(word: &str) -> bool {
-    word.chars()
-        .all(|ch| is_greek_char(ch) || !ch.is_alphabetic())
-}
+use grac::is_greek_word;
 
 /// Very simplified version of:
 /// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
