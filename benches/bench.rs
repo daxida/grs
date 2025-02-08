@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use grs::tokenizer::tokenize;
+use grs::tokenizer::{split_word_punctuation, tokenize};
 use std::fs::File;
 use std::io::{self, Read};
 
@@ -12,13 +12,22 @@ fn read_file(file_path: &str) -> io::Result<String> {
 
 fn benchmark_tokenize(c: &mut Criterion) {
     // TODO: This file is too big to include in the repository
-    let file_path = "out_trimmed_1000000.txt";
+    let file_path = "dump.txt";
     let content = read_file(file_path).unwrap();
 
     let mut group = c.benchmark_group("group");
     group.sample_size(20);
     group.bench_function("tokenize", |b| {
         b.iter(|| tokenize(black_box(&content)));
+    });
+
+    group.sample_size(20);
+    group.bench_function("split_word_punctuation", |b| {
+        b.iter(|| {
+            for w in content.split_inclusive(|c: char| c.is_whitespace()) {
+                split_word_punctuation(black_box(w));
+            }
+        });
     });
 }
 

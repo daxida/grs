@@ -23,20 +23,21 @@ pub type Doc<'a> = Vec<Token<'a>>;
 /// Split a string with no spaces into a tuple of options (left_punct, word, right_punct)
 ///
 /// This may leave punctuation inside word.
-fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
+//
+// NOTE: This is pub only to bench it..
+pub fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
     let start = word
         .char_indices()
         .find(|&(_, c)| c.is_alphabetic())
         .map(|(i, _)| i);
 
-    let end = word
-        .char_indices()
-        .rev()
-        .find(|&(_, c)| c.is_alphabetic())
-        .map(|(i, c)| i + c.len_utf8());
-
     if let Some(start) = start {
-        let end = end.unwrap();
+        let end = word
+            .char_indices()
+            .rev()
+            .find(|&(_, c)| c.is_alphabetic())
+            .map(|(i, c)| i + c.len_utf8())
+            .unwrap();
         (&word[..start], &word[start..end], &word[end..])
     } else {
         // If the word has not a single alphabetic char...
@@ -49,88 +50,85 @@ fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
 pub fn tokenize(text: &str) -> Doc {
     let mut pos = 0;
     let mut index = 0;
+    let mut tokens = Vec::new();
 
-    text.split_inclusive(|c: char| c.is_whitespace())
-        .flat_map(|w| {
-            let non_whitespace = w.trim_end_matches(|c: char| c.is_whitespace());
-            let (lpunct, word, rpunct) = split_word_punctuation(non_whitespace);
+    for w in text.split_inclusive(|c: char| c.is_whitespace()) {
+        let non_whitespace = w.trim_end_matches(|c: char| c.is_whitespace());
+        let (lpunct, word, rpunct) = split_word_punctuation(non_whitespace);
 
-            let start = pos;
-            let end = start + w.len();
-            pos = end;
+        let start = pos;
+        let end = start + w.len();
+        pos = end;
 
-            let mut tokens = Vec::new();
+        // Empty non_whitespace quick exit case.
+        // Treat it as NOT punct since it is only whitespace.
+        if non_whitespace.is_empty() {
+            let token = Token {
+                text: "",
+                whitespace: w,
+                index,
+                range: TextRange::new(start, end),
+                punct: false,
+                greek: false,
+            };
+            tokens.push(token);
+            index += 1;
+            continue;
+        }
 
-            // Empty non_whitespace quick exit case
-            // Treat it as NOT punct since it is only whitespace
-            if non_whitespace.is_empty() {
-                let token = Token {
-                    text: "",
-                    whitespace: w,
-                    index,
-                    range: TextRange::new(start, end),
-                    punct: false,
-                    greek: false,
-                };
-                tokens.push(token);
-                index += 1;
-                return tokens;
-            }
+        if !lpunct.is_empty() {
+            let token = Token {
+                text: lpunct,
+                whitespace: "",
+                index,
+                range: TextRange::new(start, start + lpunct.len()),
+                punct: true,
+                greek: false,
+            };
+            tokens.push(token);
+            index += 1;
+        }
 
-            if !lpunct.is_empty() {
-                let token = Token {
-                    text: lpunct,
-                    whitespace: "",
-                    index,
-                    range: TextRange::new(start, start + lpunct.len()),
-                    punct: true,
-                    greek: false,
-                };
-                tokens.push(token);
-                index += 1;
-            }
+        if !word.is_empty() {
+            // May be empty
+            let whitespace = if rpunct.is_empty() {
+                &w[lpunct.len() + word.len() + rpunct.len()..]
+            } else {
+                ""
+            };
 
-            if !word.is_empty() {
-                // May be empty
-                let whitespace = if rpunct.is_empty() {
-                    &w[lpunct.len() + word.len() + rpunct.len()..]
-                } else {
-                    ""
-                };
+            let start_at = start + lpunct.len();
+            let token = Token {
+                text: word,
+                whitespace,
+                index,
+                range: TextRange::new(start_at, start_at + word.len() + whitespace.len()),
+                punct: false,
+                greek: is_greek_word(word),
+            };
+            tokens.push(token);
+            index += 1;
+        }
 
-                let start_at = start + lpunct.len();
-                let token = Token {
-                    text: word,
-                    whitespace,
-                    index,
-                    range: TextRange::new(start_at, start_at + word.len() + whitespace.len()),
-                    punct: false,
-                    greek: is_greek_word(word),
-                };
-                tokens.push(token);
-                index += 1;
-            }
+        if !rpunct.is_empty() {
+            // May be empty
+            let whitespace = &w[lpunct.len() + word.len() + rpunct.len()..];
 
-            if !rpunct.is_empty() {
-                // May be empty
-                let whitespace = &w[lpunct.len() + word.len() + rpunct.len()..];
+            let start_at = start + lpunct.len() + word.len();
+            let token = Token {
+                text: rpunct,
+                whitespace,
+                index,
+                range: TextRange::new(start_at, start_at + whitespace.len() + rpunct.len()),
+                punct: true,
+                greek: false,
+            };
+            tokens.push(token);
+            index += 1;
+        }
+    }
 
-                let start_at = start + lpunct.len() + word.len();
-                let token = Token {
-                    text: rpunct,
-                    whitespace,
-                    index,
-                    range: TextRange::new(start_at, start_at + whitespace.len() + rpunct.len()),
-                    punct: true,
-                    greek: false,
-                };
-                tokens.push(token);
-                index += 1;
-            }
-
-            tokens
-        })
-        .collect()
+    tokens
 }
 
 #[cfg(test)]
@@ -138,22 +136,27 @@ mod tests {
     use super::*;
     use itertools::Itertools;
 
-    #[test]
-    fn test_tokenization_splitting_basic() {
-        let text = "Καλημέρα, κόσμε";
-        let doc = tokenize(text);
-        assert_eq!(doc[0].text, "Καλημέρα");
-        assert_eq!(doc[1].text, ",");
-        assert_eq!(doc[2].text, "κόσμε");
+    fn splitting(text: &str, expected: &[&str]) {
+        let received: Vec<_> = tokenize(text).iter().map(|token| token.text).collect();
+        assert_eq!(received, expected)
     }
 
     #[test]
-    fn test_tokenization_splitting_punct() {
-        let text = "την «ξεκρέμασε";
-        let doc = tokenize(text);
-        assert_eq!(doc[0].text, "την");
-        assert_eq!(doc[1].text, "«");
-        assert_eq!(doc[2].text, "ξεκρέμασε");
+    fn test_splitting() {
+        splitting("Καλημέρα, κόσμε", &["Καλημέρα", ",", "κόσμε"]);
+        splitting("την «ξεκρέμασε", &["την", "«", "ξεκρέμασε"]);
+        splitting(
+            " την  «   ξεκρέμασε ",
+            &["", "την", "", "«", "", "", "ξεκρέμασε"],
+        );
+    }
+
+    #[test]
+    fn test_split_word_punctuation() {
+        assert_eq!(split_word_punctuation("λέξη..."), ("", "λέξη", "..."));
+        assert_eq!(split_word_punctuation(";?λέξη"), (";?", "λέξη", ""));
+        assert_eq!(split_word_punctuation(";?λέξη..."), (";?", "λέξη", "..."));
+        assert_eq!(split_word_punctuation(";?..."), (";?...", "", ""));
     }
 
     #[test]
