@@ -173,6 +173,17 @@ fn get_context_message(text: &str, range: &TextRange) -> String {
     .to_string()
 }
 
+fn get_rich_context_message(text: &str, range: &TextRange, rule: &Rule) -> String {
+    let ctx = get_context_message(&text, &range);
+    let fixable = if rule.has_fix() {
+        format!("[{}]", "*".to_string().cyan())
+    } else {
+        "   ".to_string()
+    };
+    let message = format!("{:<3}: {} {}", format!("{}", rule).cyan(), fixable, ctx);
+    message
+}
+
 const MAX_ITERATIONS: usize = 100;
 
 type Counter = HashMap<Rule, usize>;
@@ -190,7 +201,7 @@ type Counter = HashMap<Rule, usize>;
 /// * Should do statistics always, for safety // and it's cheap
 /// * Uses rules with no fixes. We should remove those from the config
 ///   since they are not printed nor, obviously, fixable.
-pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, Counter) {
+pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
     let mut transformed = text.to_string();
     let mut messages = Vec::new();
     let mut fixed = Counter::new();
@@ -259,16 +270,11 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
                 }
             }
 
-            // Debug colored print
-            //
             // This should go somewhere else, but it is fine to keep it here for now
             // since it also gives feedback on the behaviour of this fix looping.
-            let ctx = get_context_message(&transformed, &fix.range);
-            if !statistics && !ctx.is_empty() {
-                let message = format!("{:<3}: {}", format!("{}", rule).cyan(), ctx);
-                // println!("{}", message);
-                messages.push(message);
-            }
+            let message = get_rich_context_message(&transformed, &fix.range, &rule);
+            // println!("{}", message);
+            messages.push(message);
 
             *fixed.entry(rule).or_insert(0) += 1;
 
@@ -306,14 +312,13 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
 
 // https://github.com/astral-sh/ruff/blob/fc59e1b17f0a538a0150ea5a63de6305a8810c62/crates/ruff_linter/src/linter.rs#L382
 pub fn lint_only(text: &str, config: Config) -> (Vec<String>, Counter) {
-    let diagnostics = check(&text, config);
+    let diagnostics = check(text, config);
     let mut statistics = Counter::new();
     let messages = diagnostics
         .iter()
         .map(|diagnostic| {
             *statistics.entry(diagnostic.kind).or_insert(0) += 1;
-            let ctx = get_context_message(text, &diagnostic.range);
-            format!("{:<3}: {}", format!("{}", diagnostic.kind).cyan(), ctx)
+            get_rich_context_message(text, &diagnostic.range, &diagnostic.kind)
         })
         .collect();
 

@@ -168,14 +168,14 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
 
         let statistics_counter = if args.diff {
-            let (fixed, _messages, statistics_counter) = fix(&text, &config, args.statistics);
+            let (fixed, _messages, statistics_counter) = fix(&text, &config);
             // I dont know how to remove colors
             let text_diff = CodeDiff::new(&text, &fixed);
             // println!("{}", file.to_str().unwrap().purple());
             println!("{}", text_diff);
             statistics_counter
         } else if args.fix {
-            let (fixed, _messages, statistics_counter) = fix(&text, &config, args.statistics);
+            let (fixed, _messages, statistics_counter) = fix(&text, &config);
             // Overwrite the file with the modified content
             if let Err(err) = std::fs::write(file, &fixed) {
                 eprintln!("Failed to write to file {:?}: {}", file, err);
@@ -220,14 +220,23 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     }
 
     let n_errors = global_statistics_counter.values().sum::<usize>();
+    let n_fixable_errors = global_statistics_counter
+        .iter()
+        .filter_map(|(rule, cnt)| if rule.has_fix() { Some(cnt) } else { None })
+        .sum::<usize>();
 
     // Should probably count those with fixes...
     if n_errors == 0 {
         println!("No errors!");
     } else if args.fix {
-        println!("Fixed {} errors.", format!("{}", n_errors).red().bold());
+        println!("Fixed {n_errors} errors.");
     } else {
-        println!("Detected {} errors.", format!("{}", n_errors).red().bold());
+        println!(
+            "Found {} errors.\n[{}] {} fixable with the `--fix` option.",
+            n_errors,
+            "*".to_string().cyan(),
+            n_fixable_errors,
+        );
     }
 
     Ok(ExitStatus::Success)
