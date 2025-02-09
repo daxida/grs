@@ -187,7 +187,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             statistics_counter
         } else {
             let (messages, statistics_counter) = lint_only(&text, &config);
-            if !args.statistics {
+            if !args.statistics && !messages.is_empty() {
                 println!("{}", messages.join("\n"));
             }
             statistics_counter
