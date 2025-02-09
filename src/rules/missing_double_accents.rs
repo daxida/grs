@@ -113,6 +113,7 @@ pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
     if missing_double_accents_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingDoubleAccents,
+            range: token.range,
             fix: Some(Fix {
                 replacement: format!("{}{}", add_acute_at(token.text, 1), token.whitespace),
                 range: token.range,

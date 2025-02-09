@@ -73,6 +73,7 @@ pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic
 
         diagnostics.push(Diagnostic {
             kind: Rule::MixedScripts,
+            range: token.range,
             fix: Some(Fix {
                 replacement: format!("{}{}", fixed, token.whitespace),
                 range: token.range,

@@ -34,6 +34,7 @@ pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<D
     if n_syllables > 1 && missing_accent_capital_opt(token).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingAccentCapital,
+            range: token.range,
             fix: Some(Fix {
                 replacement: format!(
                     "{}{}",

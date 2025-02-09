@@ -24,11 +24,13 @@ pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
     for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE.iter() {
         // There must be sth better without break
         if let Some((start, _)) = text.match_indices(target).next() {
+            let range = TextRange::new(start, start + target.len());
             diagnostics.push(Diagnostic {
                 kind: Rule::OutdatedSpelling,
+                range,
                 fix: Some(Fix {
                     replacement: destination.to_string(),
-                    range: TextRange::new(start, start + target.len()),
+                    range,
                 }),
             });
         }

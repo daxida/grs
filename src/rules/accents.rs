@@ -77,6 +77,7 @@ pub fn monosyllable_accented(token: &Token, doc: &Doc, diagnostics: &mut Vec<Dia
         let without_accent = remove_diacritic_at(token.text, 1, Diacritic::ACUTE);
         diagnostics.push(Diagnostic {
             kind: Rule::MonosyllableAccented,
+            range: token.range,
             fix: Some(Fix {
                 replacement: format!("{}{}", without_accent, token.whitespace),
                 range: token.range,
@@ -137,6 +138,7 @@ pub fn multisyllable_not_accented(token: &Token, doc: &Doc, diagnostics: &mut Ve
         };
         let diagnostic = Diagnostic {
             kind: Rule::MultisyllableNotAccented,
+            range: token.range,
             fix: None,
         };
         diagnostics.push(diagnostic);

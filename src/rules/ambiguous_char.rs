@@ -8,11 +8,13 @@ const AMBIGUOUS_PAIRS: &[(&str, &str)] = &[("µ", "μ")];
 pub fn ambiguous_char(text: &str, diagnostics: &mut Vec<Diagnostic>) {
     for (target, destination) in AMBIGUOUS_PAIRS.iter() {
         if let Some((start, _)) = text.match_indices(target).next() {
+            let range = TextRange::new(start, start + target.len());
             diagnostics.push(Diagnostic {
                 kind: Rule::AmbiguousChar,
+                range,
                 fix: Some(Fix {
                     replacement: destination.to_string(),
-                    range: TextRange::new(start, start + target.len()),
+                    range,
                 }),
             });
         }

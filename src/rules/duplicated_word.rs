@@ -69,6 +69,7 @@ pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnosti
         // };
         diagnostics.push(Diagnostic {
             kind: Rule::DuplicatedWord,
+            range: token.range,
             fix: None,
         });
     }

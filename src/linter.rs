@@ -177,17 +177,22 @@ const MAX_ITERATIONS: usize = 100;
 type FixTable = HashMap<Rule, usize>;
 
 /// Should return result
+///
 /// cf
 /// ruff_linter/src/linter.rs::lint_fix
+/// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/linter.rs
+///
 /// ruff_linter/src/fix/mod.rs
+/// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/fix/mod.rs
 ///
 /// NOTE:
-/// Should do statistics always, for safety // and it's cheap
-///
+/// * Should do statistics always, for safety // and it's cheap
+/// * Uses rules with no fixes. We should remove those from the config
+///   since they are not printed nor, obviously, fixable.
 pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, FixTable) {
     let mut transformed = text.to_string();
     let mut messages = Vec::new();
-    let mut fixed = HashMap::new();
+    let mut fixed = FixTable::new();
     let mut iterations = 0;
 
     // This is potentially a bad idea iif a fix could affect previous tokens,
