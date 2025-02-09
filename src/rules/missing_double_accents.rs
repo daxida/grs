@@ -32,7 +32,7 @@ pub const PRON: &[&str] = &[
 const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
     "...", "…", "«", "\"", "“",
     // Testing
-    "[", "{", "*", "<", "#", "}"
+    "[", "{", "*", "<", "#", "}", ":",
 ];
 
 /// Words that signify some separations that allows us to detect an error.
@@ -128,18 +128,6 @@ mod tests {
     use crate::tokenizer::tokenize;
 
     #[test]
-    fn test_missing_double_accents_no_proparoxytone() {
-        let token = Token {
-            text: "καλός",
-            ..Token::default()
-        };
-        let doc: Vec<Token> = Vec::new();
-        let mut diagnostics = Vec::new();
-        missing_double_accents(&token, &doc, &mut diagnostics);
-        assert!(diagnostics.is_empty());
-    }
-
-    #[test]
     fn test_missing_double_accents_proparoxytone_with_punct() {
         let doc = vec![
             Token {
@@ -179,21 +167,25 @@ mod tests {
         assert!(!diagnostics.is_empty());
     }
 
-    macro_rules! test_no_errors {
-        ($name:ident, $text:expr) => {
+    macro_rules! test {
+        ($name:ident, $text:expr, $expected:expr) => {
             #[test]
             fn $name() {
                 let text = $text;
                 let doc = tokenize(text);
                 let mut diagnostics = Vec::new();
                 missing_double_accents(&doc[0], &doc, &mut diagnostics);
-                assert!(diagnostics.is_empty());
+                assert_eq!(diagnostics.is_empty(), $expected);
             }
         };
     }
 
-    test_no_errors!(test_numbers, "ανακαλύφθηκε το 1966");
-    test_no_errors!(test_newline_asterisk, "διακρίνονται σε\n*");
-    test_no_errors!(test_before_quote_marks, "διάρκεια του “πειράματος”");
-    test_no_errors!(test_me_tou, "περισσότερο με του αλόγου");
+    test!(basic, "ανακαλύφθηκε το.", false);
+
+    test!(no_proparoxytone, "καλός.", true);
+    test!(numbers, "ανακαλύφθηκε το 1966", true);
+    test!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
+    test!(newline_asterisk, "διακρίνονται σε\n*", true);
+    test!(before_quote_marks, "διάρκεια του “πειράματος”", true);
+    test!(me_tou, "περισσότερο με του αλόγου", true);
 }
