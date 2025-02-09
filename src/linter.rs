@@ -4,6 +4,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::rules::*;
 use crate::tokenizer::{tokenize, Doc, Token};
@@ -100,9 +101,9 @@ fn cmp_fix(rule1: Rule, rule2: Rule, fix1: &Fix, fix2: &Fix) -> std::cmp::Orderi
 ///
 /// TODO: continue printing if we face a period that turns out to be an ellipsis
 /// TODO: replace \n with something less intrusive (cf. if the text is only "Χωρίς\n")
-fn get_context_message(text: &str, fix: &Fix) -> String {
-    let start = fix.range.start();
-    let end = fix.range.end();
+fn get_context_message(text: &str, range: &TextRange) -> String {
+    let start = range.start();
+    let end = range.end();
 
     let max_spaces = 5;
     let ellipsis = "[…] ";
@@ -174,7 +175,7 @@ fn get_context_message(text: &str, fix: &Fix) -> String {
 
 const MAX_ITERATIONS: usize = 100;
 
-type FixTable = HashMap<Rule, usize>;
+type Counter = HashMap<Rule, usize>;
 
 /// Should return result
 ///
@@ -189,11 +190,20 @@ type FixTable = HashMap<Rule, usize>;
 /// * Should do statistics always, for safety // and it's cheap
 /// * Uses rules with no fixes. We should remove those from the config
 ///   since they are not printed nor, obviously, fixable.
-pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, FixTable) {
+pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>, Counter) {
     let mut transformed = text.to_string();
     let mut messages = Vec::new();
-    let mut fixed = FixTable::new();
+    let mut fixed = Counter::new();
     let mut iterations = 0;
+
+    // These rules have no fixes: remove them from the config.
+    // TODO: do this before reaching this function
+    let conf = config
+        .to_vec()
+        .into_iter()
+        .filter(|rule| *rule != Rule::MultisyllableNotAccented && *rule != Rule::DuplicatedWord)
+        .collect::<Vec<_>>();
+    let config: Config = &conf;
 
     // This is potentially a bad idea iif a fix could affect previous tokens,
     // which is possible but rare since there is not much dependency across tokens.
@@ -219,12 +229,15 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
         if with_fixes.peek().is_none() {
             break;
         }
+
         // println!(
         //     "{}",
         //     format!(
-        //         "At iteration {}. {} diagnostics.",
+        //         "At iteration {}. {} diagnostics. {} with_fixes. {} text length.",
         //         iterations,
-        //         diagnostics.len().to_string().red().bold()
+        //         diagnostics.len().to_string().red().bold(),
+        //         with_fixes.clone().count().to_string().red().bold(),
+        //         transformed.len().to_string().red().bold(),
         //     )
         //     .italic()
         // );
@@ -232,8 +245,6 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
         let rfixes = with_fixes
             .filter_map(|diagnostic| diagnostic.fix.as_ref().map(|fix| (diagnostic.kind, fix)))
             .sorted_by(|(rule1, fix1), (rule2, fix2)| cmp_fix(*rule1, *rule2, fix1, fix2));
-
-        // dbg!("{:?}", rfixes.clone().take(10).collect::<Vec<_>>());
 
         let mut first_fix = true;
         let mut transformed_this_iter = String::with_capacity(transformed.len());
@@ -243,7 +254,7 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
             // We skip this fix.
             if let Some(last_pos) = last_pos {
                 if last_pos > fix.range.start() {
-                    dbg!("Break due to disordered fixes");
+                    eprintln!("Break due to disordered fixes");
                     break;
                 }
             }
@@ -252,7 +263,7 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
             //
             // This should go somewhere else, but it is fine to keep it here for now
             // since it also gives feedback on the behaviour of this fix looping.
-            let ctx = get_context_message(&transformed, fix);
+            let ctx = get_context_message(&transformed, &fix.range);
             if !statistics && !ctx.is_empty() {
                 let message = format!("{:<3}: {}", format!("{}", rule).cyan(), ctx);
                 // println!("{}", message);
@@ -291,4 +302,20 @@ pub fn fix(text: &str, config: Config, statistics: bool) -> (String, Vec<String>
     final_transformed.push_str(&transformed);
 
     (final_transformed, messages, fixed)
+}
+
+// https://github.com/astral-sh/ruff/blob/fc59e1b17f0a538a0150ea5a63de6305a8810c62/crates/ruff_linter/src/linter.rs#L382
+pub fn lint_only(text: &str, config: Config) -> (Vec<String>, Counter) {
+    let diagnostics = check(&text, config);
+    let mut statistics = Counter::new();
+    let messages = diagnostics
+        .iter()
+        .map(|diagnostic| {
+            *statistics.entry(diagnostic.kind).or_insert(0) += 1;
+            let ctx = get_context_message(text, &diagnostic.range);
+            format!("{:<3}: {}", format!("{}", diagnostic.kind).cyan(), ctx)
+        })
+        .collect();
+
+    (messages, statistics)
 }

@@ -21,7 +21,7 @@ use itertools::Itertools;
 use std::collections::HashMap;
 use strum::IntoEnumIterator;
 
-use grs::linter::fix;
+use grs::linter::{fix, lint_only};
 use grs::registry::{Rule, RULES};
 use grs::text_diff::CodeDiff;
 
@@ -166,31 +166,35 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     for file in text_files.iter() {
         let text = std::fs::read_to_string(file)
             .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
-        let (_fixed, messages, statistics_counter) = fix(&text, &config, args.statistics);
 
-        let mut had_error = false;
-        for (key, value) in statistics_counter {
-            had_error = true;
-            *global_statistics_counter.entry(key).or_insert(0) += value;
-        }
-
-        if had_error {
+        let statistics_counter = if args.diff {
+            let (fixed, _messages, statistics_counter) = fix(&text, &config, args.statistics);
+            // I dont know how to remove colors
+            let text_diff = CodeDiff::new(&text, &fixed);
             // println!("{}", file.to_str().unwrap().purple());
-            // header
-            if args.diff {
-                // I dont know how to remove colors
-                let text_diff = CodeDiff::new(&text, &_fixed);
-                println!("{}", text_diff);
-            } else if !args.statistics {
-                println!("{}", messages.join("\n"));
-            }
-        }
-
-        if args.fix {
+            println!("{}", text_diff);
+            statistics_counter
+        } else if args.fix {
+            let (fixed, _messages, statistics_counter) = fix(&text, &config, args.statistics);
             // Overwrite the file with the modified content
-            if let Err(err) = std::fs::write(file, &_fixed) {
+            if let Err(err) = std::fs::write(file, &fixed) {
                 eprintln!("Failed to write to file {:?}: {}", file, err);
             }
+            // println!("{}", file.to_str().unwrap().purple());
+            // if !args.statistics {
+            //     println!("{}", messages.join("\n"));
+            // }
+            statistics_counter
+        } else {
+            let (messages, statistics_counter) = lint_only(&text, &config);
+            if !args.statistics {
+                println!("{}", messages.join("\n"));
+            }
+            statistics_counter
+        };
+
+        for (key, value) in statistics_counter {
+            *global_statistics_counter.entry(key).or_insert(0) += value;
         }
     }
 
