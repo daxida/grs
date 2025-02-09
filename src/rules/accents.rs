@@ -125,11 +125,10 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    // Do not remove accents from abbreviations: όλ' αυτά
     if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
         if ptoken.punct {
-            if let Some(npunct_first_char) = ptoken.text.chars().next() {
-                if APOSTROPHES.contains(&npunct_first_char) {
+            if let Some(ppunct_first_char) = ptoken.text.chars().next() {
+                if APOSTROPHES.contains(&ppunct_first_char) {
                     return None;
                 }
             }
@@ -194,4 +193,15 @@ mod tests {
 
     test!(base_multi, multisyllable_not_accented, "καλημερα", false);
     test!(acronym, multisyllable_not_accented, "Α.Υ.", true);
+
+    #[test]
+    fn apostrophe() {
+        // Requires the given token to be on some position > 0
+        let text = "να ’λεγε";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
+        assert_eq!(doc[2].text, "λεγε");
+        assert_eq!(diagnostics.is_empty(), true);
+    }
 }
