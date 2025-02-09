@@ -206,10 +206,11 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             .sorted_by(|a, b| b.1.cmp(a.1))
             .for_each(|(k, v)| {
                 println!(
-                    "{:padding$}    {:<4}    {}",
+                    "{:padding$}    {:<4}   [{}] {}",
                     v,
                     format!("{}", k).red().bold(),
-                    format!("{:?}", k).cyan(),
+                    format!("{}", if k.has_fix() { "*" } else { " " }).cyan(),
+                    format!("{:?}", k),
                 )
             });
     }

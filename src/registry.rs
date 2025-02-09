@@ -14,6 +14,24 @@ pub enum Rule {
     AmbiguousChar,
 }
 
+impl Rule {
+    // Having hardcoded this here over extracting it from the rule
+    // implementations is not ideal.
+    pub const fn has_fix(&self) -> bool {
+        use Rule::*;
+        matches!(
+            self,
+            MissingDoubleAccents
+                | MissingAccentCapital
+                | AddFinalN
+                | RemoveFinalN
+                | OutdatedSpelling
+                | MonosyllableAccented
+                | AmbiguousChar
+        )
+    }
+}
+
 // This is probably slower than using a match statement in Rule::FromStr
 // but it has the advantage of being reusable in other parts of the code,
 // like when returning a list of codes if an non existent code is passed
