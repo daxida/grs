@@ -210,11 +210,11 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             .sorted_by(|a, b| b.1.cmp(a.1))
             .for_each(|(k, v)| {
                 println!(
-                    "{:padding$}    {:<4}   [{}] {}",
+                    "{:padding$}    {:<4}   [{}] {:?}",
                     v,
                     format!("{}", k).red().bold(),
-                    format!("{}", if k.has_fix() { "*" } else { " " }).cyan(),
-                    format!("{:?}", k),
+                    (if k.has_fix() { "*" } else { " " }).to_string().cyan(),
+                    k
                 )
             });
     }
@@ -264,7 +264,7 @@ mod tests {
         .map(|w| w.trim_start())
         .collect::<String>();
 
-        let config_str = vec!["MA"];
+        let config_str = ["MA"];
         let config: Vec<Rule> = config_str
             .iter()
             .map(|code| code.parse::<Rule>().unwrap())
@@ -274,7 +274,7 @@ mod tests {
         for token in tokenize(&text) {
             println!("{:?}", token)
         }
-        let (fixed, messages, _) = fix(&text, &config, false);
+        let (fixed, messages, _) = fix(&text, &config);
         println!("{}", messages.join("\n"));
         println!("{}", fixed);
 

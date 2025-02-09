@@ -174,7 +174,7 @@ fn get_context_message(text: &str, range: &TextRange) -> String {
 }
 
 fn get_rich_context_message(text: &str, range: &TextRange, rule: &Rule) -> String {
-    let ctx = get_context_message(&text, &range);
+    let ctx = get_context_message(text, range);
     let fixable = if rule.has_fix() {
         format!("[{}]", "*".to_string().cyan())
     } else {
@@ -210,8 +210,8 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
     // These rules have no fixes: remove them from the config.
     // TODO: do this before reaching this function
     let conf = config
-        .to_vec()
-        .into_iter()
+        .iter()
+        .copied()
         .filter(|rule| *rule != Rule::MultisyllableNotAccented && *rule != Rule::DuplicatedWord)
         .collect::<Vec<_>>();
     let config: Config = &conf;
