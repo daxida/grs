@@ -231,8 +231,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
 fn main() {
     let fr = std::time::Instant::now();
     let _ = run();
-    let to = std::time::Instant::now();
-    println!("Execution time: {:.2?}", to.duration_since(fr));
+    println!("Execution time: {:.2?}", fr.elapsed());
 }
 
 // For ad-hoc tests
