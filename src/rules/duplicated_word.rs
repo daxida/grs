@@ -6,30 +6,23 @@ use crate::tokenizer::{Doc, Token};
 //
 // Should also add pronouns and not open this can of worms:
 // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
+#[rustfmt::skip]
 const DUPLICATED_WORD_EXCEPTIONS: &[&str] = &[
-    "κάτω",
-    "γύρω",
-    "μπροστά",
-    "πλάι",
-    "λίγα",
-    "πολύ",
+    "κάτω", "γύρω", "μπροστά", "πλάι",
+    "λίγα", "πολύ",
     "καλά",
-    "πρώτα",
-    "πρώτη",
-    "πρώτον",
+    "πρώτα", "πρώτη", "πρώτον",
     "ίσως",
     "πότε",
-    "κάπου",
-    "γρήγορα",
-    "σιγά",
-    "αργά",
+    "κάπου", "όπως",
+    "πρωί",
+    "γρήγορα", "σιγά", "αργά",
     "ίσα",
-    "πενήντα",
+    "δυο", "τρία", "πενήντα",
+    "κούτσα",
+    "άκρη",
     // Can of worms
-    "με",
-    "μου",
-    "του",
-    "της",
+    "με", "μου", "του", "της",
 ];
 
 fn duplicated_word_opt(token: &Token, doc: &Doc) -> Option<()> {
@@ -73,4 +66,27 @@ pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnosti
             fix: None,
         });
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tokenizer::tokenize;
+
+    macro_rules! test {
+        ($name:ident, $text:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let text = $text;
+                let doc = tokenize(text);
+                let mut diagnostics = Vec::new();
+                duplicated_word(&doc[0], &doc, &mut diagnostics);
+                assert_eq!(diagnostics.is_empty(), $expected);
+            }
+        };
+    }
+
+    test!(base, "λάθος λάθος", false);
+    test!(numbers_one, "δυο δυο", true);
+    test!(numbers_two, "τρία τρία", true);
 }
