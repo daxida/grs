@@ -95,13 +95,26 @@ fn is_multisyllable_not_accented(word: &str) -> bool {
         )
 }
 
-// They should never appear on capitalized position, so no uppercase.
+// ** Can NOT appear on capitalized position, so no uppercase.
 #[rustfmt::skip]
 const CORRECT_MULTISYLLABLE_NOT_ACCENTED: &[&str] = &[
     "ποτε",
     // https://el.wiktionary.org/wiki/τινά
     "τινες", "τινα", "τινε", "τινος", "τινων", "τινοιν", "τινι", "τισι", "τινας",
     "τονε", "τηνε",
+    // ** These can appear on capitalized position
+];
+
+// ** Can appear on capitalized position.
+// https://el.wiktionary.org/wiki/προτακτικό
+#[rustfmt::skip]
+const PROSTAKTIKOI: &[&str] = &[
+    // Lowercase
+    "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
+    "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
+    // Uppercase
+    "Αγια", "Αγιο", "Αϊ", "Γερο", "Γρια", "Θεια",
+    "Κυρα", "Μαστρο", "Μπαρμπα", "Παπα", "Χατζη"
 ];
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
@@ -114,7 +127,8 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     }
 
     // Ignore if all caps. Titles do not have accents.
-    if token.text.chars().all(|c| c.is_uppercase()) {
+    // Ignore also some inside punctuation. Ex. ΒΟΥΤΥΡΑ-ΕΛΑΙΑ is correct.
+    if token.text.chars().all(|c| c.is_uppercase() || c == '-') {
         return None;
     }
 
@@ -138,6 +152,9 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         if ntoken.punct {
             if let Some(npunct_first_char) = ntoken.text.chars().next() {
                 if APOSTROPHES.contains(&npunct_first_char) {
+                    return None;
+                }
+                if PROSTAKTIKOI.contains(&token.text) && npunct_first_char == '-' {
                     return None;
                 }
             }
@@ -180,6 +197,7 @@ mod tests {
         };
     }
 
+    // ** Monosyllable
     test!(base_mono_one, monosyllable_accented, "μέλ", false);
     test!(base_mono_two, monosyllable_accented, "μέλ  ", false);
     test!(final_period, monosyllable_accented, "μέλ. Και άλλα.", false);
@@ -191,8 +209,24 @@ mod tests {
     );
     test!(ellipsis, monosyllable_accented, "μέλ... Και άλλα.", true);
 
+    // ** Multisyllable
     test!(base_multi, multisyllable_not_accented, "καλημερα", false);
     test!(acronym, multisyllable_not_accented, "Α.Υ.", true);
+    test!(
+        capital_hyphen,
+        multisyllable_not_accented,
+        "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ",
+        true
+    );
+    test!(
+        final_n,
+        multisyllable_not_accented,
+        "μιαν ανήσυχη ματιά",
+        true
+    );
+    test!(gero_one, multisyllable_not_accented, "γερο - Ευθύμιο", true);
+    test!(gero_two, multisyllable_not_accented, "γερο-Ευθύμιο", true);
+    test!(papa, multisyllable_not_accented, "παπα - Ευθύμιο", true);
 
     #[test]
     fn apostrophe() {
