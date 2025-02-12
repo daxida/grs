@@ -6,8 +6,6 @@ use grac::constants::APOSTROPHES;
 use grac::diacritic_pos;
 use grac::Diacritic;
 
-// TODO: γένεια
-
 /// Does not count double accented proparoxytones
 fn is_proparoxytone_strict(word: &str) -> bool {
     diacritic_pos(word, Diacritic::ACUTE) == [3]

@@ -1,19 +1,11 @@
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
-use grac::constants::APOSTROPHES;
+use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
 use grac::{
     ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, syllabify_el,
     syllabify_el_mode, Diacritic, Synizesis,
 };
-
-// TODO: is this in grac?
-const CORRECT_MONOSYLLABLE_ACCENTED: &[&str] = &[
-    // Original
-    "μού", "μάς", "τού", "τής", "τούς", "τών", "σού", "σάς", "πώς", "πού", "ή", "νά", "έν", "έξ",
-    // Capitalized
-    "Μού", "Μάς", "Τού", "Τής", "Τούς", "Τών", "Σού", "Σάς", "Πώς", "Πού", "Ή", "Νά", "Έν", "Έξ",
-];
 
 fn is_monosyllable_accented(word: &str) -> bool {
     syllabify_el_mode(word, Synizesis::Never).len() == 1
@@ -27,7 +19,7 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    if CORRECT_MONOSYLLABLE_ACCENTED.contains(&token.text) {
+    if MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text) {
         return None;
     }
 
@@ -197,36 +189,38 @@ mod tests {
         };
     }
 
+    macro_rules! test_mono {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test!($name, monosyllable_accented, $text, $expected);
+        };
+    }
+
+    macro_rules! test_multi {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test!($name, multisyllable_not_accented, $text, $expected);
+        };
+    }
+
     // ** Monosyllable
-    test!(base_mono_one, monosyllable_accented, "μέλ", false);
-    test!(base_mono_two, monosyllable_accented, "μέλ  ", false);
-    test!(final_period, monosyllable_accented, "μέλ. Και άλλα.", false);
-    test!(
-        abbreviation_period,
-        monosyllable_accented,
-        "μέλ. και άλλα.",
-        true
-    );
-    test!(ellipsis, monosyllable_accented, "μέλ... Και άλλα.", true);
+    // * Has error
+    test_mono!(base_mono_one, "μέλ", false);
+    test_mono!(base_mono_two, "μέλ  ", false);
+    test_mono!(final_period, "μέλ. Και άλλα.", false);
+    // * Has no error
+    test_mono!(abbreviation_period, "μέλ. και άλλα.", true);
+    test_mono!(ellipsis, "μέλ... Και άλλα.", true);
+    test_mono!(old_numbers, "είς των βοσκών", true);
 
     // ** Multisyllable
-    test!(base_multi, multisyllable_not_accented, "καλημερα", false);
-    test!(acronym, multisyllable_not_accented, "Α.Υ.", true);
-    test!(
-        capital_hyphen,
-        multisyllable_not_accented,
-        "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ",
-        true
-    );
-    test!(
-        final_n,
-        multisyllable_not_accented,
-        "μιαν ανήσυχη ματιά",
-        true
-    );
-    test!(gero_one, multisyllable_not_accented, "γερο - Ευθύμιο", true);
-    test!(gero_two, multisyllable_not_accented, "γερο-Ευθύμιο", true);
-    test!(papa, multisyllable_not_accented, "παπα - Ευθύμιο", true);
+    // * Has error
+    test_multi!(base_multi, "καλημερα", false);
+    // * Has no error
+    test_multi!(acronym, "Α.Υ.", true);
+    test_multi!(capital_hyphen, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
+    test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
+    test_multi!(gero_one, "γερο - Ευθύμιο", true);
+    test_multi!(gero_two, "γερο-Ευθύμιο", true);
+    test_multi!(papa, "παπα - Ευθύμιο", true);
 
     #[test]
     fn apostrophe() {
