@@ -265,6 +265,7 @@ dependencies = [
  "criterion",
  "grac",
  "itertools 0.14.0",
+ "serde",
  "similar",
  "strum",
  "strum_macros",

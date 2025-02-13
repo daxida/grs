@@ -1,9 +1,13 @@
 use crate::range::TextRange;
 use grac::is_greek_word;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Very simplified version of:
 /// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Token<'a> {
     pub text: &'a str,
     /// Trailing whistespace

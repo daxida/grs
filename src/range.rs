@@ -1,8 +1,12 @@
 use std::fmt;
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 type TextSize = usize;
 
 #[derive(Default, Copy, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct TextRange {
     // Invariant: start <= end
     start: TextSize,
