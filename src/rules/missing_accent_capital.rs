@@ -38,7 +38,7 @@ pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<D
     if n_syllables > 1 && missing_accent_capital_opt(token).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingAccentCapital,
-            range: token.range,
+            range: token.range_text(),
             fix: Some(Fix {
                 replacement: format!(
                     "{}{}",
@@ -56,6 +56,20 @@ pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<D
 mod tests {
     use super::*;
     use crate::tokenizer::tokenize;
+
+    #[test]
+    fn test_range() {
+        let text = "Αλλο ";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        missing_accent_capital(&doc[0], &doc, &mut diagnostics);
+        assert!(!diagnostics.is_empty());
+
+        let diagnostic = &diagnostics[0];
+        let range = diagnostic.range;
+        assert_eq!(range.start(), 0);
+        assert_eq!(range.end(), "Αλλο".len());
+    }
 
     macro_rules! test {
         ($name:ident, $text:expr, $expected:expr) => {

@@ -70,7 +70,7 @@ pub fn monosyllable_accented(token: &Token, doc: &Doc, diagnostics: &mut Vec<Dia
         let without_accent = remove_diacritic_at(token.text, 1, Diacritic::ACUTE);
         diagnostics.push(Diagnostic {
             kind: Rule::MonosyllableAccented,
-            range: token.range,
+            range: token.range_text(),
             fix: Some(Fix {
                 replacement: format!("{}{}", without_accent, token.whitespace),
                 range: token.range,
@@ -165,7 +165,7 @@ pub fn multisyllable_not_accented(token: &Token, doc: &Doc, diagnostics: &mut Ve
         // No Fix: we can not know where the accent was supposed to be.
         diagnostics.push(Diagnostic {
             kind: Rule::MultisyllableNotAccented,
-            range: token.range,
+            range: token.range_text(),
             fix: None,
         });
     }
@@ -175,6 +175,34 @@ pub fn multisyllable_not_accented(token: &Token, doc: &Doc, diagnostics: &mut Ve
 mod tests {
     use super::*;
     use crate::tokenizer::tokenize;
+
+    #[test]
+    fn test_range_mono() {
+        let text = "Ώς κι ο μπαρμπα-Στάθης";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        monosyllable_accented(&doc[0], &doc, &mut diagnostics);
+        assert!(!diagnostics.is_empty());
+
+        let diagnostic = &diagnostics[0];
+        let range = diagnostic.range;
+        assert_eq!(range.start(), 0);
+        assert_eq!(range.end(), "Ώς".len());
+    }
+
+    #[test]
+    fn test_range_multi() {
+        let text = "Αλλο ";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        multisyllable_not_accented(&doc[0], &doc, &mut diagnostics);
+        assert!(!diagnostics.is_empty());
+
+        let diagnostic = &diagnostics[0];
+        let range = diagnostic.range;
+        assert_eq!(range.start(), 0);
+        assert_eq!(range.end(), "Αλλο".len());
+    }
 
     macro_rules! test {
         ($name:ident, $fn:expr, $text:expr, $expected:expr) => {

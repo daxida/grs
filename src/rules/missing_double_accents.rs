@@ -111,7 +111,7 @@ pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
     if missing_double_accents_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingDoubleAccents,
-            range: token.range,
+            range: token.range_text(),
             fix: Some(Fix {
                 replacement: format!("{}{}", add_acute_at(token.text, 1), token.whitespace),
                 range: token.range,
@@ -126,7 +126,7 @@ mod tests {
     use crate::tokenizer::tokenize;
 
     #[test]
-    fn test_missing_double_accents_proparoxytone_with_punct() {
+    fn test_tokens_without_error() {
         let doc = vec![
             Token {
                 text: "άνθρωπος",
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn test_missing_double_accents_proparoxytone() {
+    fn test_tokens_with_error() {
         let doc = vec![
             Token {
                 text: "άνθρωπος",
@@ -163,6 +163,20 @@ mod tests {
         let mut diagnostics = Vec::new();
         missing_double_accents(&doc[0], &doc, &mut diagnostics);
         assert!(!diagnostics.is_empty());
+    }
+
+    #[test]
+    fn test_range() {
+        let text = "άνθρωπος του.";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        missing_double_accents(&doc[0], &doc, &mut diagnostics);
+        assert!(!diagnostics.is_empty());
+
+        let diagnostic = &diagnostics[0];
+        let range = diagnostic.range;
+        assert_eq!(range.start(), 0);
+        assert_eq!(range.end(), "άνθρωπος".len());
     }
 
     macro_rules! test {

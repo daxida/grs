@@ -167,11 +167,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         let text = std::fs::read_to_string(file)
             .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
 
+        // Header
+        // println!("{}", file.to_str().unwrap().purple());
+
         let statistics_counter = if args.diff {
             let (fixed, _messages, statistics_counter) = fix(&text, &config);
             // I dont know how to remove colors
             let text_diff = CodeDiff::new(&text, &fixed);
-            // println!("{}", file.to_str().unwrap().purple());
             println!("{}", text_diff);
             statistics_counter
         } else if args.fix {
@@ -180,7 +182,6 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             if let Err(err) = std::fs::write(file, &fixed) {
                 eprintln!("Failed to write to file {:?}: {}", file, err);
             }
-            // println!("{}", file.to_str().unwrap().purple());
             // if !args.statistics {
             //     println!("{}", messages.join("\n"));
             // }

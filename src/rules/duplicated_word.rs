@@ -1,4 +1,5 @@
 use crate::diagnostic::Diagnostic;
+use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 
@@ -56,13 +57,12 @@ fn duplicated_word_opt(token: &Token, doc: &Doc) -> Option<()> {
 /// '— Τζωρτζ Τζωρτζ.' > '— Τζωρτζ, Τζωρτζ!'
 pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
     if duplicated_word_opt(token, doc).is_some() {
-        // let fix = Fix {
-        //     replacement: String::new(), // also remove the whitespace
-        //     range: token.range,
-        // };
+        // Guaranteed to exist at this point.
+        let ntoken = doc.get(token.index + 1).unwrap();
+        let range = TextRange::new(token.range.start(), ntoken.range_text().end());
         diagnostics.push(Diagnostic {
             kind: Rule::DuplicatedWord,
-            range: token.range,
+            range,
             fix: None,
         });
     }

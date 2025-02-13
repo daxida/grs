@@ -63,7 +63,7 @@ pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic
     if remove_final_n_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::RemoveFinalN,
-            range: token.range,
+            range: token.range_text(),
             fix: Some(Fix {
                 replacement: format!("{}{}", remove_last_char(token.text), token.whitespace),
                 range: token.range,
@@ -89,7 +89,7 @@ pub fn add_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) 
     if add_final_n_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::AddFinalN,
-            range: token.range,
+            range: token.range_text(),
             fix: Some(Fix {
                 replacement: format!("{}ν{}", token.text, token.whitespace),
                 range: token.range,

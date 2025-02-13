@@ -203,6 +203,8 @@ type Counter = HashMap<Rule, usize>;
 ///   since they are not printed nor, obviously, fixable.
 pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
     let mut transformed = text.to_string();
+    // For debugging. To remove eventually.
+    #[allow(unused_mut)]
     let mut messages = Vec::new();
     let mut fixed = Counter::new();
     let mut iterations = 0;
@@ -270,11 +272,11 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
                 }
             }
 
-            // This should go somewhere else, but it is fine to keep it here for now
-            // since it also gives feedback on the behaviour of this fix looping.
-            let message = get_rich_context_message(&transformed, &fix.range, &rule);
+            // Only for debugging: fixing should not print content messages.
+            //
+            // let message = get_rich_context_message(&transformed, &fix.range, &rule);
             // println!("{}", message);
-            messages.push(message);
+            // messages.push(message);
 
             *fixed.entry(rule).or_insert(0) += 1;
 

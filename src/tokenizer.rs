@@ -18,6 +18,20 @@ pub struct Token<'a> {
     pub greek: bool,
 }
 
+impl Token<'_> {
+    /// Start and end byte of the text part of the token.
+    ///
+    /// Compare it with Token::range, which includes whitespace.
+    pub const fn range_text(&self) -> TextRange {
+        if self.whitespace.is_empty() {
+            self.range
+        } else {
+            let text_end = self.range.end().saturating_sub(self.whitespace.len());
+            TextRange::new(self.range.start(), text_end)
+        }
+    }
+}
+
 pub type Doc<'a> = Vec<Token<'a>>;
 
 /// Split a string with no spaces into a tuple of options (left_punct, word, right_punct)
