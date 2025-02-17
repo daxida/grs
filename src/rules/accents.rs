@@ -25,6 +25,11 @@ fn is_abbreviation(token: &Token, doc: &Doc) -> bool {
                 if APOSTROPHES.contains(&npunct_first_char) {
                     return true;
                 }
+
+                if npunct_first_char == '…' {
+                    return true;
+                }
+
                 // A final period requires checking that the next word is capitalized
                 if npunct_first_char == '.' {
                     // Consider ellipsis as a black box
@@ -55,10 +60,22 @@ fn is_abbreviation(token: &Token, doc: &Doc) -> bool {
     false
 }
 
+fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
+    match doc.get(token.index.saturating_sub(1)) {
+        Some(ptoken) => {
+            ptoken.punct
+                && ptoken.whitespace.is_empty()
+                && ptoken.text.chars().all(|c| c.is_ascii_digit())
+        }
+        None => false,
+    }
+}
+
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
         || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text)
         || is_abbreviation(token, doc)
+        || previous_token_is_num(token, doc)
     {
         return None;
     }
@@ -119,6 +136,7 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
         || CORRECT_MULTISYLLABLE_NOT_ACCENTED.contains(&token.text)
         || is_abbreviation(token, doc)
+        || previous_token_is_num(token, doc)
     {
         return None;
     }
@@ -132,7 +150,8 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     // Ignore acronyms and some other compounds:
     // * Α.Υ.
     // * {{ετικ|λαϊκ|ιατρ}}
-    if token.text.contains(['.', '|', ':']) {
+    // * Ο,ΤΙ ΝΑ 'ΝΑΙ
+    if token.text.contains(['.', '|', ':', ',']) {
         return None;
     }
 
@@ -243,6 +262,7 @@ mod tests {
     test_mono!(abbreviation_period, "μέλ. και άλλα.", true);
     test_mono!(ellipsis_one, "μέλ... Και άλλα.", true);
     test_mono!(ellipsis_two, "μέλ... και άλλα.", true);
+    test_mono!(ellipsis_three, "μέλ… και άλλα.", true);
     test_mono!(old_numbers, "είς των βοσκών", true);
 
     // ** Multisyllable
@@ -251,21 +271,44 @@ mod tests {
     // * Has no error
     test_multi!(acronym, "Α.Υ.", true);
     test_multi!(capital_hyphen, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
+    test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
     test_multi!(gero_one, "γερο - Ευθύμιο", true);
     test_multi!(gero_two, "γερο-Ευθύμιο", true);
     test_multi!(papa, "παπα - Ευθύμιο", true);
     test_multi!(synizesis, "δια", true);
     test_multi!(multi_final_period, "απεβ. το 330 π.Χ.", true);
+    test_multi!(multi_ellipsis, "αλλω… τι;", true);
 
+    // Requires the given token to be on some position > 0
     #[test]
-    fn apostrophe() {
-        // Requires the given token to be on some position > 0
+    fn multi_apostrophe() {
         let text = "να ’λεγε";
         let doc = tokenize(text);
         let mut diagnostics = Vec::new();
         multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
         assert_eq!(doc[2].text, "λεγε");
+        assert_eq!(diagnostics.is_empty(), true);
+    }
+
+    // After numbers, with and without accent should be accepted
+    #[test]
+    fn mono_after_number() {
+        let text = "του 20ού αιώνα";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        monosyllable_accented(&doc[2], &doc, &mut diagnostics);
+        assert_eq!(doc[2].text, "ού");
+        assert_eq!(diagnostics.is_empty(), true);
+    }
+
+    #[test]
+    fn multi_after_number() {
+        let text = "ο 39χρονος αγνοούμενος";
+        let doc = tokenize(text);
+        let mut diagnostics = Vec::new();
+        multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
+        assert_eq!(doc[2].text, "χρονος");
         assert_eq!(diagnostics.is_empty(), true);
     }
 }
