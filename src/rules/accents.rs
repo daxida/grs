@@ -14,44 +14,21 @@ fn is_monosyllable_accented(word: &str) -> bool {
         && !ends_with_diphthong(word)
 }
 
-/// A word is considered an abbreviation if:
-/// * It is followed by an apostrophe. Ex. όλ' αυτά
-/// * It is followed by a dot that it not a period (the sentence does not end at it).
-///   Ex. απεβ. το 330 OR μέλ... και άλλα.
-fn is_abbreviation(token: &Token, doc: &Doc) -> bool {
+/// A word is considered an abbreviation if it is followed by an apostrophe.
+/// Ex. όλ' αυτά
+///
+/// A dot must be treated like a black box since there is no way to distinguish
+/// if it is a period, an ellipsis or an abbreviation dot. Checking if the next word
+/// is capitalized is not a solution, since an abbreviation might be followed by
+/// a proper noun, invalidating the logic. Ex. Λεωφ. Κηφισού.
+fn is_abbreviation_or_ends_with_dot(token: &Token, doc: &Doc) -> bool {
     if let Some(ntoken) = doc.get(token.index + 1) {
         if token.whitespace.is_empty() && ntoken.punct {
             if let Some(npunct_first_char) = ntoken.text.chars().next() {
-                if APOSTROPHES.contains(&npunct_first_char) {
+                if ['.', '…'].contains(&npunct_first_char)
+                    || APOSTROPHES.contains(&npunct_first_char)
+                {
                     return true;
-                }
-
-                if npunct_first_char == '…' {
-                    return true;
-                }
-
-                // A final period requires checking that the next word is capitalized
-                if npunct_first_char == '.' {
-                    // Consider ellipsis as a black box
-                    if ntoken.text.starts_with("...") {
-                        return true;
-                    }
-
-                    let mut index = 2;
-                    // If we reached EOF (the .get retuned None), it makes sense
-                    // to claim that there was no abbreviation. It meant that the text
-                    // ended with some period-starting ntoken: "... μέλ.[EOF]"
-                    while let Some(nntoken) = doc.get(token.index + index) {
-                        index += 1;
-                        if !nntoken.punct {
-                            if let Some(nnpunct_first_char) = nntoken.text.chars().next() {
-                                if !nnpunct_first_char.is_uppercase() {
-                                    return true;
-                                }
-                            }
-                            break;
-                        }
-                    }
                 }
             }
         }
@@ -74,7 +51,7 @@ fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
         || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text)
-        || is_abbreviation(token, doc)
+        || is_abbreviation_or_ends_with_dot(token, doc)
         || previous_token_is_num(token, doc)
     {
         return None;
@@ -135,7 +112,7 @@ const PROSTAKTIKOI: &[&str] = &[
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
         || CORRECT_MULTISYLLABLE_NOT_ACCENTED.contains(&token.text)
-        || is_abbreviation(token, doc)
+        || is_abbreviation_or_ends_with_dot(token, doc)
         || previous_token_is_num(token, doc)
     {
         return None;
@@ -255,11 +232,11 @@ mod tests {
 
     // ** Monosyllable
     // * Has error
-    test_mono!(base_mono_one, "μέλ", false);
-    test_mono!(base_mono_two, "μέλ  ", false);
-    test_mono!(mono_final_period, "μέλ. Και άλλα.", false);
+    test_mono!(mono_base_one, "μέλ", false);
+    test_mono!(mono_base_two, "μέλ  ", false);
     // * Has no error
-    test_mono!(abbreviation_period, "μέλ. και άλλα.", true);
+    test_mono!(mono_period_one, "μέλ. Και άλλα.", true);
+    test_mono!(mono_period_two, "μέλ. και άλλα.", true);
     test_mono!(ellipsis_one, "μέλ... Και άλλα.", true);
     test_mono!(ellipsis_two, "μέλ... και άλλα.", true);
     test_mono!(ellipsis_three, "μέλ… και άλλα.", true);
@@ -267,9 +244,11 @@ mod tests {
 
     // ** Multisyllable
     // * Has error
-    test_multi!(base_multi, "καλημερα", false);
+    test_multi!(multi_base, "καλημερα", false);
     // * Has no error
-    test_multi!(acronym, "Α.Υ.", true);
+    test_multi!(multi_period_one, "επεξ. επιλεγμένο", true);
+    test_multi!(multi_period_two, "επεξ. Επιλεγμένο", true);
+    test_multi!(multi_acronym, "Α.Υ.", true);
     test_multi!(capital_hyphen, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
     test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
