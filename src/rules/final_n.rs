@@ -21,11 +21,7 @@ fn remove_last_char(s: &str) -> &str {
     chars.as_str()
 }
 
-// Care uppercase
-// Passing the token && doc is for dedbug
 fn starts_with_vowel_or_plosive(token: &Token) -> bool {
-    debug_assert!(!token.punct);
-    // This only fails if the text is empty, which is an acceptable case
     if let Some(ch) = token.text.chars().next() {
         PLOSIVE_CLUSTERS
             .iter()
@@ -36,11 +32,13 @@ fn starts_with_vowel_or_plosive(token: &Token) -> bool {
     }
 }
 
+// Note that digits are considered punctuation within our tokenize logic
+// but they probably shouldn't, and they are not treated as such here.
 fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
     let mut index = token.index + 1;
     loop {
         let ntoken = doc.get(index)?;
-        if !ntoken.punct {
+        if !ntoken.punct || ntoken.text.chars().all(|c| c.is_ascii_digit()) {
             return Some(ntoken);
         }
         index += 1;
@@ -76,7 +74,15 @@ fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_ADD_N.contains(&token.text) {
         let ntoken = get_next_non_punct_token(token, doc)?;
         if starts_with_vowel_or_plosive(ntoken) {
-            return Some(());
+            // To avoid false positives in case of formal expressions
+            // with dative (Ex. επί τη εμφανίσει OR πρώτος τη τάξει),
+            // we return None in case ntoken ends with ει.
+            // This may cause false negatives, which are preferable anyway.
+            return if ntoken.text.ends_with("ει") {
+                None
+            } else {
+                Some(())
+            };
         } else {
             return None;
         }
@@ -129,8 +135,11 @@ mod tests {
     }
 
     test_add!(add_base, "στη πόλη σας", false);
+    test_add!(add_ignore_nums, "τη 2η θέση", true);
+    test_add!(add_dative, "τη τάξει", true);
 
     test_remove!(remove_base, "στην διάθεσή σας", false);
-    test_remove!(non_punct, "στην, ?διάθεσή σας", false);
-    test_remove!(mixed_langs, "την Creative Commons", true);
+    test_remove!(remove_non_punct, "στην, ?διάθεσή σας", false);
+    test_remove!(remove_ignore_nums, "την 5η θέση", true);
+    test_remove!(remove_mixed_langs, "την Creative Commons", true);
 }

@@ -179,6 +179,7 @@ mod tests {
         assert_eq!(split_word_punctuation(";?λέξη..."), (";?", "λέξη", "..."));
         assert_eq!(split_word_punctuation(";?λέ-ξη..."), (";?", "λέ-ξη", "..."));
         assert_eq!(split_word_punctuation(";?..."), (";?...", "", ""));
+        assert_eq!(split_word_punctuation("2ος"), ("2", "ος", ""));
     }
 
     #[test]
