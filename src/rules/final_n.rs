@@ -50,7 +50,7 @@ fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a To
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_REM_N.contains(&token.text) {
         let ntoken = get_next_non_punct_token(token, doc)?;
-        if !starts_with_vowel_or_plosive(ntoken) {
+        if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
             return Some(());
         } else {
             return None;
@@ -103,34 +103,34 @@ mod tests {
     use super::*;
     use crate::tokenizer::tokenize;
 
-    #[test]
-    fn test_remove() {
-        let text = "θα είναι στην διάθεσή σας";
-        let tokens = tokenize(text);
-        let mut diagnostics = Vec::new();
-        remove_final_n(&tokens[2], &tokens, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-
-        let mut diagnostics = Vec::new();
-        remove_final_n(&tokens[0], &tokens, &mut diagnostics);
-        assert!(diagnostics.is_empty());
+    macro_rules! test {
+        ($name:ident, $fn:expr, $text:expr, $expected:expr) => {
+            #[test]
+            fn $name() {
+                let text = $text;
+                let doc = tokenize(text);
+                let mut diagnostics = Vec::new();
+                $fn(&doc[0], &doc, &mut diagnostics);
+                assert_eq!(diagnostics.is_empty(), $expected);
+            }
+        };
     }
 
-    #[test]
-    fn test_add() {
-        let text = "θα είναι στη πόλη σας";
-        let tokens = tokenize(text);
-        let mut diagnostics = Vec::new();
-        add_final_n(&tokens[2], &tokens, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
+    macro_rules! test_add {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test!($name, add_final_n, $text, $expected);
+        };
     }
 
-    #[test]
-    fn test_next_non_punct_token() {
-        let text = "θα είναι στην, ?διάθεσή σας";
-        let tokens = tokenize(text);
-        let mut diagnostics = Vec::new();
-        remove_final_n(&tokens[2], &tokens, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
+    macro_rules! test_remove {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test!($name, remove_final_n, $text, $expected);
+        };
     }
+
+    test_add!(add_base, "στη πόλη σας", false);
+
+    test_remove!(remove_base, "στην διάθεσή σας", false);
+    test_remove!(non_punct, "στην, ?διάθεσή σας", false);
+    test_remove!(mixed_langs, "την Creative Commons", true);
 }

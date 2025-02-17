@@ -12,7 +12,7 @@ fn read_file(file_path: &str) -> io::Result<String> {
 
 fn benchmark_tokenize(c: &mut Criterion) {
     // TODO: This file is too big to include in the repository
-    let file_path = "dump.txt";
+    let file_path = "texts/dump.txt";
     let content = read_file(file_path).unwrap();
 
     let mut group = c.benchmark_group("group");
