@@ -1,5 +1,5 @@
 use crate::range::TextRange;
-use grac::is_greek_word;
+use grac::{is_greek_char, is_greek_word};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -40,20 +40,23 @@ pub type Doc<'a> = Vec<Token<'a>>;
 
 /// Split a string with no spaces into a tuple of options (left_punct, word, right_punct)
 ///
-/// This may leave punctuation inside word.
+/// Leaves punctuation inside the word untouched.
 //
 // NOTE: This is pub only to bench it..
 pub fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
+    // Use the is_greek_char fast path
+    let not_punct = |c: char| is_greek_char(c) || c.is_alphabetic();
+
     let start = word
         .char_indices()
-        .find(|&(_, c)| c.is_alphabetic())
+        .find(|&(_, c)| not_punct(c))
         .map(|(i, _)| i);
 
     if let Some(start) = start {
         let end = word
             .char_indices()
             .rev()
-            .find(|&(_, c)| c.is_alphabetic())
+            .find(|&(_, c)| not_punct(c))
             .map(|(i, c)| i + c.len_utf8())
             .unwrap();
         (&word[..start], &word[start..end], &word[end..])
@@ -66,7 +69,7 @@ pub fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
 
 // Note: numbers are treated as PUNCT (not ideal)
 pub fn tokenize(text: &str) -> Doc {
-    let mut pos = 0;
+    let mut end = 0;
     let mut index = 0;
     let mut tokens = Vec::new();
 
@@ -74,9 +77,8 @@ pub fn tokenize(text: &str) -> Doc {
         let non_whitespace = w.trim_end_matches(|c: char| c.is_whitespace());
         let (lpunct, word, rpunct) = split_word_punctuation(non_whitespace);
 
-        let start = pos;
-        let end = start + w.len();
-        pos = end;
+        let start = end;
+        end = start + w.len();
 
         // Empty non_whitespace quick exit case.
         // Treat it as NOT punct since it is only whitespace.
@@ -175,6 +177,7 @@ mod tests {
         assert_eq!(split_word_punctuation("λέξη..."), ("", "λέξη", "..."));
         assert_eq!(split_word_punctuation(";?λέξη"), (";?", "λέξη", ""));
         assert_eq!(split_word_punctuation(";?λέξη..."), (";?", "λέξη", "..."));
+        assert_eq!(split_word_punctuation(";?λέ-ξη..."), (";?", "λέ-ξη", "..."));
         assert_eq!(split_word_punctuation(";?..."), (";?...", "", ""));
     }
 
