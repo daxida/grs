@@ -1,3 +1,8 @@
+// Notes
+//
+// While rare enough, the current logic contains false positives. Ex:
+// * και το κτήριο του, παλαιού πλέον, Μουσείου Ακρόπολης
+
 use crate::diagnostic::*;
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};

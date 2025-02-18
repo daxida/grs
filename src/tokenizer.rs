@@ -226,7 +226,7 @@ mod tests {
         for pair in doc.iter().zip_longest(expected.iter()) {
             match pair {
                 itertools::EitherOrBoth::Both(rec, exp) => assert_eq!(rec, exp),
-                _ => panic!(),
+                _ => assert!(false),
             }
         }
 
@@ -270,7 +270,7 @@ mod tests {
         for pair in doc.iter().zip_longest(expected.iter()) {
             match pair {
                 itertools::EitherOrBoth::Both(rec, exp) => assert_eq!(rec, exp),
-                _ => panic!(),
+                _ => assert!(false),
             }
         }
 
