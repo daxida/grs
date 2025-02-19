@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use grs::tokenizer::{split_word_punctuation, tokenize};
+use grac::split_word_punctuation;
+use grs::tokenizer::tokenize;
 use std::fs::File;
 use std::io::{self, Read};
 

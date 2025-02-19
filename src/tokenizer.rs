@@ -1,5 +1,6 @@
 use crate::range::TextRange;
 use grac::is_greek_word;
+use grac::split_word_punctuation;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -37,39 +38,6 @@ impl Token<'_> {
 }
 
 pub type Doc<'a> = Vec<Token<'a>>;
-
-/// Split a string with no spaces into a tuple of options (left_punct, word, right_punct)
-///
-/// Leaves punctuation inside the word untouched.
-//
-// NOTE: This is pub only to bench it..
-pub fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
-    // NOTE: we can't use is_greek_char because some punctuation
-    // marks are in that range, ex. ᾽
-    // That is, this won't work:
-    // let not_punct = |c: char| is_greek_char(c) || c.is_alphabetic();
-    // We need another function that is_greek_letter
-    let not_punct = |c: char| c.is_alphabetic();
-
-    let start = word
-        .char_indices()
-        .find(|&(_, c)| not_punct(c))
-        .map(|(i, _)| i);
-
-    if let Some(start) = start {
-        let end = word
-            .char_indices()
-            .rev()
-            .find(|&(_, c)| not_punct(c))
-            .map(|(i, c)| i + c.len_utf8())
-            .unwrap();
-        (&word[..start], &word[start..end], &word[end..])
-    } else {
-        // If the word has not a single alphabetic char...
-        // treat it as right punctuation to simplify tokenize's logic
-        (word, "", "")
-    }
-}
 
 // Note: numbers are treated as PUNCT (not ideal)
 pub fn tokenize(text: &str) -> Doc {
