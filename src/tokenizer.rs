@@ -1,5 +1,5 @@
 use crate::range::TextRange;
-use grac::{is_greek_char, is_greek_word};
+use grac::is_greek_word;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -44,8 +44,12 @@ pub type Doc<'a> = Vec<Token<'a>>;
 //
 // NOTE: This is pub only to bench it..
 pub fn split_word_punctuation(word: &str) -> (&str, &str, &str) {
-    // Use the is_greek_char fast path
-    let not_punct = |c: char| is_greek_char(c) || c.is_alphabetic();
+    // NOTE: we can't use is_greek_char because some punctuation
+    // marks are in that range, ex. ᾽
+    // That is, this won't work:
+    // let not_punct = |c: char| is_greek_char(c) || c.is_alphabetic();
+    // We need another function that is_greek_letter
+    let not_punct = |c: char| c.is_alphabetic();
 
     let start = word
         .char_indices()
@@ -170,6 +174,12 @@ mod tests {
             &["", "την", "", "«", "", "", "ξεκρέμασε"],
         );
         splitting("το: Φέγγαρι", &["το", ":", "Φέγγαρι"]);
+    }
+
+    #[test]
+    fn test_splitting_apostrophe() {
+        splitting("όλ' αυτά", &["όλ", "'", "αυτά"]);
+        splitting("ἄρ᾽ Ἀθήνας", &["ἄρ", "᾽", "Ἀθήνας"]);
     }
 
     #[test]
