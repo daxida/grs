@@ -11,9 +11,29 @@ use grac::constants::APOSTROPHES;
 use grac::diacritic_pos;
 use grac::Diacritic;
 
-/// Does not count double accented proparoxytones
+/// Returns `true` if this `word` has only an accent on the antepenultimate.
 fn is_proparoxytone_strict(word: &str) -> bool {
     diacritic_pos(word, Diacritic::ACUTE) == [3]
+}
+
+/// Returns `true` if this `token` (or some combination of tokens starting
+/// at this token) conforms an abbreviation which fulfills the role of
+/// an ellipsis. Ex. κ.τ.λ., κτλ, κτλ.
+///
+/// Includes common typos like κ.λ.π. instead of κ.λπ.
+#[allow(unused_variables)]
+fn followed_by_elliptic_abbreviation(token: &Token, doc: &Doc) -> bool {
+    // The last dot must be removed because of our tokenizing logic
+    if [
+        "κ.τ.λ", "κτλ", "κ.λπ", "κ.λ.π", "κ.τ.ό", "κ.τ.ο", "κ.τ.ρ", "κ.τ.τ", "κ.ά", "κ.α",
+    ]
+    .contains(&token.text)
+    {
+        return true;
+    }
+    // Here some more logic could be added to deal with compounds
+    // after the current token.
+    false
 }
 
 /// Pronouns
@@ -41,7 +61,7 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
 /// Words that signify some separations that allows us to detect an error.
 #[rustfmt::skip]
 const STOKEN_SEPARATOR_WORDS: &[&str] = &[
-    "και", "κι", "όταν", 
+    "και", "κι", "όταν",
     // Testing
     "με",
 ];
@@ -106,6 +126,8 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         return Some(());
     } else if SE_TO_COMPOUNDS.contains(&nntoken.text) {
         // Testing
+        return Some(());
+    } else if followed_by_elliptic_abbreviation(nntoken, doc) {
         return Some(());
     }
 
@@ -198,6 +220,9 @@ mod tests {
     }
 
     test!(basic, "ανακαλύφθηκε το.", false);
+    test!(stoken_separator_one, "αντίκτυπο του και", false);
+    test!(stoken_separator_two, "αντίκτυπο του κ.λ.π.", false);
+    test!(stoken_separator_three, "αντίκτυπο του κ.α.", false);
 
     test!(no_proparoxytone, "καλός.", true);
     test!(numbers, "ανακαλύφθηκε το 1966", true);

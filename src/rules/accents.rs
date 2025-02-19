@@ -118,17 +118,16 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    // Ignore if all caps. Titles do not have accents.
-    // Ignore also some inside punctuation. Ex. ΒΟΥΤΥΡΑ-ΕΛΑΙΑ is correct.
-    if token.text.chars().all(|c| c.is_uppercase() || c == '-') {
-        return None;
-    }
-
     // Ignore acronyms and some other compounds:
     // * Α.Υ.
     // * {{ετικ|λαϊκ|ιατρ}}
     // * Ο,ΤΙ ΝΑ 'ΝΑΙ
-    if token.text.contains(['.', '|', ':', ',']) {
+    if token.text.contains(['.', '|', ':', ',', '/', '-']) {
+        return None;
+    }
+
+    // Ignore if all caps. Ex. ΒΟΥΤΥΡΑ is correct.
+    if token.text.chars().all(|c| c.is_uppercase()) {
         return None;
     }
 
@@ -237,10 +236,11 @@ mod tests {
     // * Has no error
     test_mono!(mono_period_one, "μέλ. Και άλλα.", true);
     test_mono!(mono_period_two, "μέλ. και άλλα.", true);
-    test_mono!(ellipsis_one, "μέλ... Και άλλα.", true);
-    test_mono!(ellipsis_two, "μέλ... και άλλα.", true);
-    test_mono!(ellipsis_three, "μέλ… και άλλα.", true);
-    test_mono!(old_numbers, "είς των βοσκών", true);
+    test_mono!(mono_ellipsis_one, "μέλ... Και άλλα.", true);
+    test_mono!(mono_ellipsis_two, "μέλ... και άλλα.", true);
+    test_mono!(mono_ellipsis_three, "μέλ… και άλλα.", true);
+    test_mono!(mono_old_numbers, "είς των βοσκών", true);
+    test_mono!(mono_abbreviation, "ἄρ᾽ Ἀθήνας", true);
 
     // ** Multisyllable
     // * Has error
@@ -249,7 +249,9 @@ mod tests {
     test_multi!(multi_period_one, "επεξ. επιλεγμένο", true);
     test_multi!(multi_period_two, "επεξ. Επιλεγμένο", true);
     test_multi!(multi_acronym, "Α.Υ.", true);
-    test_multi!(capital_hyphen, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
+    test_multi!(multi_punct, "του/της", true);
+    test_multi!(multi_hyphen, "Μπαρτ-Χιρστ", true);
+    test_multi!(multi_hyphen_capital, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
     test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
     test_multi!(gero_one, "γερο - Ευθύμιο", true);
