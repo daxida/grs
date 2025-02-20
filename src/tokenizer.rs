@@ -124,6 +124,23 @@ pub fn tokenize(text: &str) -> Doc {
     tokens
 }
 
+/// A simple macro for testing a rule.
+#[macro_export]
+macro_rules! test_rule {
+    ($name:ident, $rule_fn:expr, $text:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let text = $text;
+            let doc = tokenize(text);
+            let mut diagnostics = Vec::new();
+            for token in &doc {
+                $rule_fn(&token, &doc, &mut diagnostics);
+            }
+            assert_eq!(diagnostics.is_empty(), $expected);
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

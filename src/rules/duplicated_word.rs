@@ -71,22 +71,16 @@ pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnosti
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
 
-    macro_rules! test {
+    macro_rules! test_dw {
         ($name:ident, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                duplicated_word(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
+            test_rule!($name, duplicated_word, $text, $expected);
         };
     }
 
-    test!(base, "λάθος λάθος", false);
-    test!(numbers_one, "δυο δυο", true);
-    test!(numbers_two, "τρία τρία", true);
+    test_dw!(base, "λάθος λάθος", false);
+    test_dw!(numbers_one, "δυο δυο", true);
+    test_dw!(numbers_two, "τρία τρία", true);
 }

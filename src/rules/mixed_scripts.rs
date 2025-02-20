@@ -85,22 +85,16 @@ pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
 
-    macro_rules! test_empty_diagnostics {
+    macro_rules! test_ms {
         ($name:ident, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                mixed_scripts(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
+            test_rule!($name, mixed_scripts, $text, $expected);
         };
     }
 
-    test_empty_diagnostics!(lowercase_o, "νέo", false);
-    test_empty_diagnostics!(uppercase_a, "Áλλα", false);
-    test_empty_diagnostics!(lowercase_i, "Χωρíς", false);
+    test_ms!(lowercase_o, "νέo", false);
+    test_ms!(uppercase_a, "Áλλα", false);
+    test_ms!(lowercase_i, "Χωρíς", false);
 }

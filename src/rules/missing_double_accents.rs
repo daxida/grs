@@ -150,6 +150,7 @@ pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
 
     #[test]
@@ -206,28 +207,22 @@ mod tests {
         assert_eq!(range.end(), "άνθρωπος".len());
     }
 
-    macro_rules! test {
+    macro_rules! test_mda {
         ($name:ident, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                missing_double_accents(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
+            test_rule!($name, missing_double_accents, $text, $expected);
         };
     }
 
-    test!(basic, "ανακαλύφθηκε το.", false);
-    test!(stoken_separator_one, "αντίκτυπο του και", false);
-    test!(stoken_separator_two, "αντίκτυπο του κ.λ.π.", false);
-    test!(stoken_separator_three, "αντίκτυπο του κ.α.", false);
+    test_mda!(basic_onw, "ανακαλύφθηκε το.", false);
+    test_mda!(basic_two, "Όταν ανακαλύφθηκε το.", false);
+    test_mda!(stoken_separator_one, "αντίκτυπο του και", false);
+    test_mda!(stoken_separator_two, "αντίκτυπο του κ.λ.π.", false);
+    test_mda!(stoken_separator_three, "αντίκτυπο του κ.α.", false);
 
-    test!(no_proparoxytone, "καλός.", true);
-    test!(numbers, "ανακαλύφθηκε το 1966", true);
-    test!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
-    test!(newline_asterisk, "διακρίνονται σε\n*", true);
-    test!(before_quote_marks, "διάρκεια του “πειράματος”", true);
-    test!(me_tou, "περισσότερο με του αλόγου", true);
+    test_mda!(no_proparoxytone, "καλός.", true);
+    test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
+    test_mda!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
+    test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
+    test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
+    test_mda!(me_tou, "περισσότερο με του αλόγου", true);
 }

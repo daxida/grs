@@ -107,39 +107,30 @@ pub fn add_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
-
-    macro_rules! test {
-        ($name:ident, $fn:expr, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                $fn(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
-        };
-    }
 
     macro_rules! test_add {
         ($name:ident, $text:expr, $expected:expr) => {
-            test!($name, add_final_n, $text, $expected);
+            test_rule!($name, add_final_n, $text, $expected);
         };
     }
 
     macro_rules! test_remove {
         ($name:ident, $text:expr, $expected:expr) => {
-            test!($name, remove_final_n, $text, $expected);
+            test_rule!($name, remove_final_n, $text, $expected);
         };
     }
 
     test_add!(add_base, "στη πόλη σας", false);
     test_add!(add_ignore_nums, "τη 2η θέση", true);
     test_add!(add_dative, "τη τάξει", true);
+    test_add!(add_dative_two, "φωνή βοώντος εν τη ερήμω", true);
 
     test_remove!(remove_base, "στην διάθεσή σας", false);
-    test_remove!(remove_non_punct, "στην, ?διάθεσή σας", false);
+    test_remove!(remove_base_two, "Είμαι στην διάθεσή σας", false);
     test_remove!(remove_ignore_nums, "την 5η θέση", true);
     test_remove!(remove_mixed_langs, "την Creative Commons", true);
+    test_remove!(remove_punct_one, "Πιάστε την! Για τον θεό", true);
+    test_remove!(remove_punct_two, "Πιάστε την, για τον θεό", true);
 }

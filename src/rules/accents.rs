@@ -173,6 +173,7 @@ pub fn multisyllable_not_accented(token: &Token, doc: &Doc, diagnostics: &mut Ve
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
 
     #[test]
@@ -203,28 +204,15 @@ mod tests {
         assert_eq!(range.end(), "Αλλο".len());
     }
 
-    macro_rules! test {
-        ($name:ident, $fn:expr, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                $fn(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
-        };
-    }
-
     macro_rules! test_mono {
         ($name:ident, $text:expr, $expected:expr) => {
-            test!($name, monosyllable_accented, $text, $expected);
+            test_rule!($name, monosyllable_accented, $text, $expected);
         };
     }
 
     macro_rules! test_multi {
         ($name:ident, $text:expr, $expected:expr) => {
-            test!($name, multisyllable_not_accented, $text, $expected);
+            test_rule!($name, multisyllable_not_accented, $text, $expected);
         };
     }
 

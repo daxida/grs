@@ -56,6 +56,7 @@ pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<D
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule;
     use crate::tokenizer::tokenize;
 
     #[test]
@@ -72,20 +73,13 @@ mod tests {
         assert_eq!(range.end(), "Αλλο".len());
     }
 
-    macro_rules! test {
+    macro_rules! test_mac {
         ($name:ident, $text:expr, $expected:expr) => {
-            #[test]
-            fn $name() {
-                let text = $text;
-                let doc = tokenize(text);
-                let mut diagnostics = Vec::new();
-                missing_accent_capital(&doc[0], &doc, &mut diagnostics);
-                assert_eq!(diagnostics.is_empty(), $expected);
-            }
+            test_rule!($name, missing_accent_capital, $text, $expected);
         };
     }
 
-    test!(base_correct, "Άλλο", true);
-    test!(base_wrong, "Αλλο", false);
-    test!(starts_with_consonant, "Χγεννα", true);
+    test_mac!(base_correct, "Άλλο", true);
+    test_mac!(base_wrong, "Αλλο", false);
+    test_mac!(starts_with_consonant, "Χγεννα", true);
 }
