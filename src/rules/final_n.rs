@@ -32,8 +32,10 @@ fn starts_with_vowel_or_plosive(token: &Token) -> bool {
     }
 }
 
-// Note that digits are considered punctuation within our tokenize logic
-// but they probably shouldn't, and they are not treated as such here.
+// Used at some point to get the next token in both rules in this module.
+// Introduces quite some false positives in exchange for more coverage if
+// the text has html formatting (i.e. wikipedia)
+#[allow(unused)]
 fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
     let mut index = token.index + 1;
     loop {
@@ -47,7 +49,7 @@ fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a To
 
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_REM_N.contains(&token.text) {
-        let ntoken = get_next_non_punct_token(token, doc)?;
+        let ntoken = doc.get(token.index + 1)?;
         if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
             return Some(());
         } else {
@@ -72,7 +74,16 @@ pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic
 
 fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_ADD_N.contains(&token.text) {
-        let ntoken = get_next_non_punct_token(token, doc)?;
+        // Ignore "εν τη" archaic dative expressions
+        if token.text == "τη" {
+            if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
+                if ptoken.text == "εν" {
+                    return None;
+                }
+            }
+        }
+
+        let ntoken = doc.get(token.index + 1)?;
         if starts_with_vowel_or_plosive(ntoken) {
             // To avoid false positives in case of formal expressions
             // with dative (Ex. επί τη εμφανίσει OR πρώτος τη τάξει),
