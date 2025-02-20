@@ -1,6 +1,7 @@
 use crate::range::TextRange;
 use grac::is_greek_word;
 use grac::split_word_punctuation;
+use grac::syllabify_el;
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -23,7 +24,30 @@ pub struct Token<'a> {
     pub greek: bool,
 }
 
-impl Token<'_> {
+impl<'a> Token<'a> {
+    pub const fn new(
+        text: &'a str,
+        whitespace: &'a str,
+        index: usize,
+        range: TextRange,
+        punct: bool,
+        greek: bool,
+    ) -> Self {
+        Self {
+            text,
+            whitespace,
+            index,
+            range,
+            punct,
+            greek,
+        }
+    }
+
+    // Note that this function is very expensive.
+    pub fn syllables(&self) -> Vec<&str> {
+        syllabify_el(self.text)
+    }
+
     /// Start and end byte of the text part of the token.
     ///
     /// Compare it with Token::range, which includes whitespace.
@@ -55,28 +79,16 @@ pub fn tokenize(text: &str) -> Doc {
         // Empty non_whitespace quick exit case.
         // Treat it as NOT punct since it is only whitespace.
         if non_whitespace.is_empty() {
-            let token = Token {
-                text: "",
-                whitespace: w,
-                index,
-                range: TextRange::new(start, end),
-                punct: false,
-                greek: false,
-            };
+            let range = TextRange::new(start, end);
+            let token = Token::new("", w, index, range, false, false);
             tokens.push(token);
             index += 1;
             continue;
         }
 
         if !lpunct.is_empty() {
-            let token = Token {
-                text: lpunct,
-                whitespace: "",
-                index,
-                range: TextRange::new(start, start + lpunct.len()),
-                punct: true,
-                greek: false,
-            };
+            let range = TextRange::new(start, start + lpunct.len());
+            let token = Token::new(lpunct, "", index, range, true, false);
             tokens.push(token);
             index += 1;
         }
@@ -90,14 +102,9 @@ pub fn tokenize(text: &str) -> Doc {
             };
 
             let start_at = start + lpunct.len();
-            let token = Token {
-                text: word,
-                whitespace,
-                index,
-                range: TextRange::new(start_at, start_at + word.len() + whitespace.len()),
-                punct: false,
-                greek: is_greek_word(word),
-            };
+            let greek = is_greek_word(word);
+            let range = TextRange::new(start_at, start_at + word.len() + whitespace.len());
+            let token = Token::new(word, whitespace, index, range, false, greek);
             tokens.push(token);
             index += 1;
         }
@@ -107,14 +114,8 @@ pub fn tokenize(text: &str) -> Doc {
             let whitespace = &w[lpunct.len() + word.len() + rpunct.len()..];
 
             let start_at = start + lpunct.len() + word.len();
-            let token = Token {
-                text: rpunct,
-                whitespace,
-                index,
-                range: TextRange::new(start_at, start_at + whitespace.len() + rpunct.len()),
-                punct: true,
-                greek: false,
-            };
+            let range = TextRange::new(start_at, start_at + whitespace.len() + rpunct.len());
+            let token = Token::new(rpunct, whitespace, index, range, true, false);
             tokens.push(token);
             index += 1;
         }

@@ -2,16 +2,16 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
-use grac::{
-    ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, syllabify_el,
-    syllabify_el_mode, Diacritic, Synizesis,
-};
+use grac::{ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, Diacritic};
 
-fn is_monosyllable_accented(word: &str) -> bool {
-    syllabify_el_mode(word, Synizesis::Never).len() == 1
-        && has_diacritic(word, Diacritic::ACUTE)
+fn is_monosyllable_accented(token: &Token) -> bool {
+    // Fast discard if possible
+    token.text.len() < 12
+        && has_diacritic(token.text, Diacritic::ACUTE)
         // Do not treat "πλάι" as en error.
-        && !ends_with_diphthong(word)
+        && !ends_with_diphthong(token.text)
+        // Expensive check
+        && token.syllables().len() == 1
 }
 
 /// A word is considered an abbreviation if it is followed by an apostrophe.
@@ -57,7 +57,7 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    if is_monosyllable_accented(token.text) {
+    if is_monosyllable_accented(token) {
         return Some(());
     }
 
@@ -79,12 +79,11 @@ pub fn monosyllable_accented(token: &Token, doc: &Doc, diagnostics: &mut Vec<Dia
     }
 }
 
-fn is_multisyllable_not_accented(word: &str) -> bool {
-    syllabify_el(word).len() > 1
-        && !has_diacritics(
-            word,
-            &[Diacritic::ACUTE, Diacritic::GRAVE, Diacritic::CIRCUMFLEX],
-        )
+fn is_multisyllable_not_accented(token: &Token) -> bool {
+    !has_diacritics(
+        token.text,
+        &[Diacritic::ACUTE, Diacritic::GRAVE, Diacritic::CIRCUMFLEX],
+    ) && token.syllables().len() > 1
 }
 
 // ** Can NOT appear on capitalized position, so no uppercase.
@@ -153,7 +152,7 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         }
     }
 
-    if is_multisyllable_not_accented(token.text) {
+    if is_multisyllable_not_accented(token) {
         return Some(());
     }
 

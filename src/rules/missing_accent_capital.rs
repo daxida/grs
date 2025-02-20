@@ -2,7 +2,6 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 use grac::has_any_diacritic;
-use grac::syllabify_el;
 use grac::{add_acute_at, is_vowel_el};
 
 /// The first character is uppercase and the rest are lowercase.
@@ -34,21 +33,23 @@ fn missing_accent_capital_opt(token: &Token) -> Option<()> {
 }
 
 pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    let n_syllables = syllabify_el(token.text).len();
-    if n_syllables > 1 && missing_accent_capital_opt(token).is_some() {
-        diagnostics.push(Diagnostic {
-            kind: Rule::MissingAccentCapital,
-            range: token.range_text(),
-            fix: Some(Fix {
-                replacement: format!(
-                    "{}{}",
-                    // The accent should go to the first syllable
-                    add_acute_at(token.text, n_syllables),
-                    token.whitespace
-                ),
-                range: token.range,
-            }),
-        })
+    if missing_accent_capital_opt(token).is_some() {
+        let n_syllables = token.syllables().len();
+        if n_syllables > 1 {
+            diagnostics.push(Diagnostic {
+                kind: Rule::MissingAccentCapital,
+                range: token.range_text(),
+                fix: Some(Fix {
+                    replacement: format!(
+                        "{}{}",
+                        // The accent should go to the first syllable
+                        add_acute_at(token.text, n_syllables),
+                        token.whitespace
+                    ),
+                    range: token.range,
+                }),
+            })
+        }
     }
 }
 
