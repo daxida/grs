@@ -53,12 +53,12 @@ impl std::str::FromStr for Rule {
     type Err = String;
 
     fn from_str(code: &str) -> Result<Self, Self::Err> {
-        for (rule_code, rule) in RULES.iter() {
+        for (rule_code, rule) in RULES {
             if code == *rule_code {
                 return Ok(*rule);
             }
         }
-        Err(format!("Unknown rule code: {}", code))
+        Err(format!("Unknown rule code: {code}"))
     }
 }
 
@@ -74,7 +74,7 @@ impl std::fmt::Debug for Rule {
     }
 }
 
-fn stringify(rule: &Rule) -> &str {
+const fn stringify(rule: &Rule) -> &str {
     match rule {
         Rule::MissingDoubleAccents => "MissingDoubleAccents",
         Rule::MissingAccentCapital => "MissingAccentCapital",

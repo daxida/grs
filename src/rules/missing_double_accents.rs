@@ -3,7 +3,7 @@
 // While rare enough, the current logic contains false positives. Ex:
 // * και το κτήριο του, παλαιού πλέον, Μουσείου Ακρόπολης
 
-use crate::diagnostic::*;
+use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 use grac::add_acute_at;
@@ -143,7 +143,7 @@ pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
                 replacement: format!("{}{}", add_acute_at(token.text, 1), token.whitespace),
                 range: token.range,
             }),
-        })
+        });
     }
 }
 

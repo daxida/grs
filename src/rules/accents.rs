@@ -113,20 +113,11 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         || CORRECT_MULTISYLLABLE_NOT_ACCENTED.contains(&token.text)
         || is_abbreviation_or_ends_with_dot(token, doc)
         || previous_token_is_num(token, doc)
+        // Ignore if all caps. Ex. ΒΟΥΤΥΡΑ is correct.
+        || token.text.chars().all(char::is_uppercase)
+        // Ignore acronyms and some other compounds. Ex. Α.Υ., Ο,ΤΙ ΝΑ 'ΝΑΙ
+        || token.text.contains(['.', '|', ':', ',', '/', '-'])
     {
-        return None;
-    }
-
-    // Ignore acronyms and some other compounds:
-    // * Α.Υ.
-    // * {{ετικ|λαϊκ|ιατρ}}
-    // * Ο,ΤΙ ΝΑ 'ΝΑΙ
-    if token.text.contains(['.', '|', ':', ',', '/', '-']) {
-        return None;
-    }
-
-    // Ignore if all caps. Ex. ΒΟΥΤΥΡΑ is correct.
-    if token.text.chars().all(|c| c.is_uppercase()) {
         return None;
     }
 
@@ -256,7 +247,7 @@ mod tests {
         let mut diagnostics = Vec::new();
         multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
         assert_eq!(doc[2].text, "λεγε");
-        assert_eq!(diagnostics.is_empty(), true);
+        assert!(diagnostics.is_empty());
     }
 
     // After numbers, with and without accent should be accepted
@@ -267,7 +258,7 @@ mod tests {
         let mut diagnostics = Vec::new();
         monosyllable_accented(&doc[2], &doc, &mut diagnostics);
         assert_eq!(doc[2].text, "ού");
-        assert_eq!(diagnostics.is_empty(), true);
+        assert!(diagnostics.is_empty());
     }
 
     #[test]
@@ -277,6 +268,6 @@ mod tests {
         let mut diagnostics = Vec::new();
         multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
         assert_eq!(doc[2].text, "χρονος");
-        assert_eq!(diagnostics.is_empty(), true);
+        assert!(diagnostics.is_empty());
     }
 }

@@ -73,7 +73,7 @@ pub enum ExitStatus {
 fn find_text_files_in_tests() -> Result<Vec<PathBuf>, ExitStatus> {
     let dir_path = PathBuf::from(".");
     let entries = std::fs::read_dir(&dir_path).map_err(|err| {
-        eprintln!("Failed to read directory {:?}: {}", dir_path, err);
+        eprintln!("Failed to read directory {dir_path:?}: {err}");
         ExitStatus::Failure
     })?;
     let mut text_files = Vec::new();
@@ -99,12 +99,12 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     // let text_files = find_text_files_in_tests()?;
 
     if args.to_monotonic {
-        for file in text_files.iter() {
+        for file in &text_files {
             let text = std::fs::read_to_string(file)
-                .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
+                .unwrap_or_else(|err| panic!("Failed to read file {file:?}: {err}"));
             let monotonic = grac::to_mono(&text);
             if let Err(err) = std::fs::write(file, &monotonic) {
-                eprintln!("Failed to write to file {:?}: {}", file, err);
+                eprintln!("Failed to write to file {file:?}: {err}");
                 return Err(ExitStatus::Failure);
             }
         }
@@ -140,7 +140,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     }
 
     // Convert to a Vec<Rules>
-    println!("Config: {:?}", config_str);
+    println!("Config: {config_str:?}");
     // TODO: This should be done at CLI parsing
     let config_res: Result<Vec<Rule>, ExitStatus> = config_str
         .iter()
@@ -163,9 +163,9 @@ fn run() -> Result<ExitStatus, ExitStatus> {
 
     let mut global_statistics_counter = HashMap::new();
 
-    for file in text_files.iter() {
+    for file in &text_files {
         let text = std::fs::read_to_string(file)
-            .unwrap_or_else(|err| panic!("Failed to read file {:?}: {}", file, err));
+            .unwrap_or_else(|err| panic!("Failed to read file {file:?}: {err}"));
 
         // Header
         // println!("{}", file.to_str().unwrap().purple());
@@ -174,13 +174,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             let (fixed, _messages, statistics_counter) = fix(&text, &config);
             // I dont know how to remove colors
             let text_diff = CodeDiff::new(&text, &fixed);
-            println!("{}", text_diff);
+            println!("{text_diff}");
             statistics_counter
         } else if args.fix {
             let (fixed, _messages, statistics_counter) = fix(&text, &config);
             // Overwrite the file with the modified content
             if let Err(err) = std::fs::write(file, &fixed) {
-                eprintln!("Failed to write to file {:?}: {}", file, err);
+                eprintln!("Failed to write to file {file:?}: {err}");
             }
             // if !args.statistics {
             //     println!("{}", messages.join("\n"));
@@ -213,10 +213,10 @@ fn run() -> Result<ExitStatus, ExitStatus> {
                 println!(
                     "{:padding$}    {:<4}   [{}] {:?}",
                     v,
-                    format!("{}", k).red().bold(),
+                    format!("{k}").red().bold(),
                     (if k.has_fix() { "*" } else { " " }).to_string().cyan(),
                     k
-                )
+                );
             });
     }
 
@@ -273,11 +273,11 @@ mod tests {
 
         println!("Text: '{}'", &text);
         for token in tokenize(&text) {
-            println!("{:?}", token)
+            println!("{token:?}");
         }
         let (fixed, messages, _) = fix(&text, &config);
         println!("{}", messages.join("\n"));
-        println!("{}", fixed);
+        println!("{fixed}");
 
         // assert!(false);
     }

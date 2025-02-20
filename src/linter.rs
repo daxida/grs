@@ -180,7 +180,7 @@ fn get_rich_context_message(text: &str, range: &TextRange, rule: &Rule) -> Strin
     } else {
         "   ".to_string()
     };
-    let message = format!("{:<3}: {} {}", format!("{}", rule).cyan(), fixable, ctx);
+    let message = format!("{:<3}: {} {}", format!("{rule}").cyan(), fixable, ctx);
     message
 }
 

@@ -76,10 +76,9 @@ impl<'a> Token<'a> {
                     format!("{}{}", t.text, t.whitespace)
                 }
             })
-            .collect::<Vec<_>>()
-            .join("");
+            .collect::<String>();
 
-        ctx.replace("\n", "⏎")
+        ctx.replace('\n', "⏎")
     }
 }
 
@@ -170,7 +169,7 @@ mod tests {
 
     fn splitting(text: &str, expected: &[&str]) {
         let received: Vec<_> = tokenize(text).iter().map(|token| token.text).collect();
-        assert_eq!(received, expected)
+        assert_eq!(received, expected);
     }
 
     #[test]

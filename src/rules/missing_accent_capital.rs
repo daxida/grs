@@ -11,7 +11,7 @@ fn is_capitalized(s: &str) -> bool {
         if !first.is_uppercase() {
             return false;
         }
-        return chars.all(|c| c.is_lowercase());
+        return chars.all(char::is_lowercase);
     }
     false
 }
@@ -48,7 +48,7 @@ pub fn missing_accent_capital(token: &Token, _doc: &Doc, diagnostics: &mut Vec<D
                     ),
                     range: token.range,
                 }),
-            })
+            });
         }
     }
 }
