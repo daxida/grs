@@ -118,18 +118,23 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
             return Some(());
         }
     // If it is not punctuation...
-    } else if STOKEN_SEPARATOR_WORDS.contains(&nntoken.text) {
-        return Some(());
-    } else if ntoken.text == nntoken.text {
-        // Testing
-        // επιφυλακτικότητα της της στερούσε
-        return Some(());
-    } else if SE_TO_COMPOUNDS.contains(&nntoken.text) {
-        // Testing
-        return Some(());
-    } else if followed_by_elliptic_abbreviation(nntoken, doc) {
+    } else if STOKEN_SEPARATOR_WORDS.contains(&nntoken.text)
+        // > επιφυλακτικότητα της της στερούσε
+        || ntoken.text == nntoken.text
+        || SE_TO_COMPOUNDS.contains(&nntoken.text)
+        || followed_by_elliptic_abbreviation(nntoken, doc)
+    {
         return Some(());
     }
+
+    // Testing
+    // > δίνοντας μου μια μπατσιά στη ράχη
+    // if ["μου", "σου", "του", "της", "μας", "σας"].contains(&ntoken.text)
+    //     && ["μια", "ένα", "έναν", "δυο", "δύο", "τρία", "τρια"].contains(&nntoken.text)
+    // {
+    //     // eprintln!("* '{}'", token.token_ctx(doc));
+    //     return Some(());
+    // }
 
     None
 }
