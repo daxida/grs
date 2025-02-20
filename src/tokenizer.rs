@@ -1,4 +1,5 @@
 use crate::range::TextRange;
+use colored::Colorize;
 use grac::is_greek_word;
 use grac::split_word_punctuation;
 use grac::syllabify_el;
@@ -58,6 +59,27 @@ impl<'a> Token<'a> {
             let text_end = self.range.end().saturating_sub(self.whitespace.len());
             TextRange::new(self.range.start(), text_end)
         }
+    }
+
+    /// Debug function. Stringify the context of the token.
+    pub fn token_ctx(&self, doc: &Doc) -> String {
+        let start = self.index.saturating_sub(1);
+        let end = self.index + 5;
+        let ctx = (start..=end)
+            .filter_map(|idx| doc.get(idx))
+            .enumerate()
+            .map(|(idx, t)| {
+                if idx == 1 {
+                    let chunk = format!("{}{}", t.text, t.whitespace);
+                    chunk.bold().to_string()
+                } else {
+                    format!("{}{}", t.text, t.whitespace)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        ctx.replace("\n", "⏎")
     }
 }
 
