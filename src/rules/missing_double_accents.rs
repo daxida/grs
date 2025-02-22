@@ -36,6 +36,15 @@ fn followed_by_elliptic_abbreviation(token: &Token, doc: &Doc) -> bool {
     false
 }
 
+/// Greek words with two accepted syllabifications
+//
+// This could probably go in grac
+#[rustfmt::skip]
+pub const ALT_SYLLABIC: &[&str] = &[
+    "ήλιος", "Ήλιος",
+    "έννοια", "Έννοια",
+];
+
 /// Pronouns
 ///
 /// It is fine to only consider lowercase since they are never
@@ -61,9 +70,10 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
 /// Words that signify some separations that allows us to detect an error.
 #[rustfmt::skip]
 const STOKEN_SEPARATOR_WORDS: &[&str] = &[
-    "και", "κι", "όταν",
-    // Testing
-    "με",
+    // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
+    "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
+    // Others
+    "με", "όταν", "θα",
 ];
 
 // https://el.wiktionary.org/wiki/το
@@ -86,14 +96,17 @@ const SE_TO_COMPOUNDS: &[&str] = &[
 ///
 /// The proparoxytone test is the most expensive part, so we try to compute it last.
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
-    // We do not deal with diminutives at the moment.
-    if token.text.ends_with("άκια") || token.text.ends_with("ούλια") {
-        return None;
-    }
-
     // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
     if ntoken.punct || !PRON.contains(&ntoken.text) {
+        return None;
+    }
+
+    if ALT_SYLLABIC.contains(&token.text)
+        // We do not deal with diminutives at the moment.
+        || token.text.ends_with("άκια")
+        || token.text.ends_with("ούλια")
+    {
         return None;
     }
 
@@ -124,6 +137,9 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         || SE_TO_COMPOUNDS.contains(&nntoken.text)
         || followed_by_elliptic_abbreviation(nntoken, doc)
     {
+        if nntoken.text == "θα" {
+            println!("{}", nntoken.token_ctx(doc))
+        }
         return Some(());
     }
 
@@ -218,16 +234,30 @@ mod tests {
         };
     }
 
-    test_mda!(basic_onw, "ανακαλύφθηκε το.", false);
-    test_mda!(basic_two, "Όταν ανακαλύφθηκε το.", false);
-    test_mda!(stoken_separator_one, "αντίκτυπο του και", false);
-    test_mda!(stoken_separator_two, "αντίκτυπο του κ.λ.π.", false);
-    test_mda!(stoken_separator_three, "αντίκτυπο του κ.α.", false);
+    test_mda!(basic1, "ανακαλύφθηκε το.", false);
+    test_mda!(basic2, "Όταν ανακαλύφθηκε το.", false);
+    test_mda!(stoken_separator1, "αντίκτυπο του και", false);
+    test_mda!(stoken_separator2, "αντίκτυπο του κ.λ.π.", false);
+    test_mda!(stoken_separator3, "αντίκτυπο του κ.α.", false);
+    test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
+    test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
 
+    // Conjunctions
+    test_mda!(conj1, "την πρόσβαση σας ή την", false);
+    test_mda!(conj2, "το τηλέφωνο σας ενώ οδηγείτε,", false);
+    test_mda!(conj3, "χτυπά τα θύματα της είτε αργά και", false);
+    test_mda!(conj4, "Μετά την ανάσταση μου όμως θα σας", false);
+    test_mda!(conj5, "θέση στο πολίτευμα μας αφού είναι το", false);
+    test_mda!(conj6, "Στα ποιήματα του ωστόσο διαβάζουμε ότι", false);
+
+    test_mda!(already_correct, "ανακαλύφθηκέ το.", true);
     test_mda!(no_proparoxytone, "καλός.", true);
     test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
     test_mda!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
     test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
     test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
     test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+
+    // Experimental
+    test_mda!(synizesis, "Στάσου, έννοια σου!", true);
 }

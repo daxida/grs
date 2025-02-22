@@ -103,9 +103,11 @@ const PROSTAKTIKOI: &[&str] = &[
     // Lowercase
     "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
     "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
+    "σιορ",
     // Uppercase
     "Αγια", "Αγιο", "Αϊ", "Γερο", "Γρια", "Θεια",
-    "Κυρα", "Μαστρο", "Μπαρμπα", "Παπα", "Χατζη"
+    "Κυρα", "Μαστρο", "Μπαρμπα", "Παπα", "Χατζη",
+    "Σιορ",
 ];
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
@@ -230,14 +232,18 @@ mod tests {
     test_multi!(multi_punct, "του/της", true);
     test_multi!(multi_hyphen, "Μπαρτ-Χιρστ", true);
     test_multi!(multi_hyphen_capital, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
+    test_multi!(multi_hyphen_variation, "5ος–6ος αιώνας π.Χ.", true);
     test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
-    test_multi!(gero_one, "γερο - Ευθύμιο", true);
-    test_multi!(gero_two, "γερο-Ευθύμιο", true);
-    test_multi!(papa, "παπα - Ευθύμιο", true);
     test_multi!(synizesis, "δια", true);
     test_multi!(multi_final_period, "απεβ. το 330 π.Χ.", true);
     test_multi!(multi_ellipsis, "αλλω… τι;", true);
+
+    // Prostaktikoi
+    test_multi!(prostatiko1, "γερο - Ευθύμιο", true);
+    test_multi!(prostatiko2, "γερο-Ευθύμιο", true);
+    test_multi!(prostatiko3, "παπα - Ευθύμιο", true);
+    test_multi!(prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
 
     // Requires the given token to be on some position > 0
     #[test]
