@@ -98,6 +98,11 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         .collect::<Vec<_>>();
     // let text_files = find_text_files_in_tests()?;
 
+    if text_files.is_empty() {
+        eprintln!("No valid text files found.");
+        return Ok(ExitStatus::Success);
+    }
+
     if args.to_monotonic {
         for file in &text_files {
             let text = std::fs::read_to_string(file)
