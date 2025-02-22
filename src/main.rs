@@ -123,7 +123,10 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     }
 
     let mut config_str: Vec<String> = match args.select {
-        None => ["MDA", "OS"].iter().map(|s| s.to_string()).collect(),
+        None => ["MDA", "OS", "MA", "MNA"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
         Some(selection) => {
             if selection.contains(&"ALL".to_string()) {
                 Rule::iter().map(|rule| rule.to_string()).collect()

@@ -1,8 +1,6 @@
-IPATH := "texts/dump_large.txt"
-
-t:
-  cargo run -rq {{IPATH}} --select ALL --statistics
-  grs {{IPATH}} --select ALL --statistics
+t path="texts/dump_lg.txt":
+  cargo run -rq {{path}} --select ALL --statistics
+  grs {{path}} --select ALL --statistics
 
 lint:
   cargo clippy --all --fix -- -Wclippy::all -Wclippy::pedantic -Wclippy::nursery

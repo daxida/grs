@@ -62,12 +62,14 @@ impl std::str::FromStr for Rule {
     }
 }
 
+// Return the acronym of the rule: MDA
 impl std::fmt::Display for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", stringify_code(self))
     }
 }
 
+// Return the Pascal case name of the rule: MissingDoubleAccents
 impl std::fmt::Debug for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", stringify(self))

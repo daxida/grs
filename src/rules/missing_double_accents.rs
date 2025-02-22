@@ -137,9 +137,6 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         || SE_TO_COMPOUNDS.contains(&nntoken.text)
         || followed_by_elliptic_abbreviation(nntoken, doc)
     {
-        if nntoken.text == "θα" {
-            println!("{}", nntoken.token_ctx(doc))
-        }
         return Some(());
     }
 

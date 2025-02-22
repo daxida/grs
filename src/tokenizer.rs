@@ -63,13 +63,14 @@ impl<'a> Token<'a> {
 
     /// Debug function. Stringify the context of the token.
     pub fn token_ctx(&self, doc: &Doc) -> String {
-        let start = self.index.saturating_sub(1);
+        let start_from = 5;
+        let start = self.index.saturating_sub(start_from);
         let end = self.index + 5;
         let ctx = (start..=end)
             .filter_map(|idx| doc.get(idx))
             .enumerate()
             .map(|(idx, t)| {
-                if idx == 1 {
+                if idx == start_from {
                     let chunk = format!("{}{}", t.text, t.whitespace);
                     chunk.bold().to_string()
                 } else {
@@ -157,7 +158,7 @@ macro_rules! test_rule {
             for token in &doc {
                 $rule_fn(&token, &doc, &mut diagnostics);
             }
-            assert_eq!(diagnostics.is_empty(), $expected);
+            assert_eq!(diagnostics.is_empty(), $expected, "(text: {text})");
         }
     };
 }
