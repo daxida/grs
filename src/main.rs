@@ -30,7 +30,7 @@ use colored::Colorize;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
-#[command(name = "grs", about = "Grs: a rule-based speel checker for Greek.")]
+#[command(name = "grs", about = "Grs: a rule-based spell checker for Greek.")]
 pub struct Args {
     /// Files to process. Anything other than .txt files will be ignored.
     #[arg(value_parser, required = true)]
