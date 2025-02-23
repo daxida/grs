@@ -49,6 +49,15 @@ fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a To
 
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_REM_N.contains(&token.text) {
+        // Treat archaic construction "εις την" as valid
+        if token.text == "την" {
+            if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
+                if ptoken.text == "εις" {
+                    return None;
+                }
+            }
+        }
+
         let ntoken = doc.get(token.index + 1)?;
         if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
             return Some(());
@@ -74,7 +83,7 @@ pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic
 
 fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_ADD_N.contains(&token.text) {
-        // Ignore "εν τη" archaic dative expressions
+        // Treat archaic construction "εν τη" as valid
         if token.text == "τη" {
             if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
                 if ptoken.text == "εν" {
@@ -135,13 +144,14 @@ mod tests {
 
     test_add!(add_base, "στη πόλη σας", false);
     test_add!(add_ignore_nums, "τη 2η θέση", true);
-    test_add!(add_dative, "τη τάξει", true);
-    test_add!(add_dative_two, "φωνή βοώντος εν τη ερήμω", true);
+    test_add!(add_dative1, "τη τάξει", true);
+    test_add!(add_dative2, "φωνή βοώντος εν τη ερήμω", true);
 
-    test_remove!(remove_base, "στην διάθεσή σας", false);
-    test_remove!(remove_base_two, "Είμαι στην διάθεσή σας", false);
+    test_remove!(remove_base1, "στην διάθεσή σας", false);
+    test_remove!(remove_base2, "Είμαι στην διάθεσή σας", false);
     test_remove!(remove_ignore_nums, "την 5η θέση", true);
     test_remove!(remove_mixed_langs, "την Creative Commons", true);
-    test_remove!(remove_punct_one, "Πιάστε την! Για τον θεό", true);
-    test_remove!(remove_punct_two, "Πιάστε την, για τον θεό", true);
+    test_remove!(remove_punct1, "Πιάστε την! Για τον θεό", true);
+    test_remove!(remove_punct2, "Πιάστε την, για τον θεό", true);
+    test_remove!(remove_ignore_eis, "εις την θάλασσαν", true);
 }
