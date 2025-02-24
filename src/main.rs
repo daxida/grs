@@ -107,7 +107,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         for file in &text_files {
             let text = std::fs::read_to_string(file)
                 .unwrap_or_else(|err| panic!("Failed to read file {file:?}: {err}"));
-            let monotonic = grac::to_mono(&text);
+            let monotonic = grac::to_monotonic(&text);
             if let Err(err) = std::fs::write(file, &monotonic) {
                 eprintln!("Failed to write to file {file:?}: {err}");
                 return Err(ExitStatus::Failure);

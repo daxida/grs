@@ -1,7 +1,7 @@
 use crate::range::TextRange;
 use colored::Colorize;
 use grac::is_greek_word;
-use grac::split_word_punctuation;
+use grac::split_punctuation;
 use grac::syllabify_el;
 
 #[cfg(feature = "serde")]
@@ -93,7 +93,7 @@ pub fn tokenize(text: &str) -> Doc {
 
     for w in text.split_inclusive(|c: char| c.is_whitespace()) {
         let non_whitespace = w.trim_end_matches(|c: char| c.is_whitespace());
-        let (lpunct, word, rpunct) = split_word_punctuation(non_whitespace);
+        let (lpunct, word, rpunct) = split_punctuation(non_whitespace);
 
         let start = end;
         end = start + w.len();
@@ -188,16 +188,6 @@ mod tests {
     fn test_splitting_apostrophe() {
         splitting("όλ' αυτά", &["όλ", "'", "αυτά"]);
         splitting("ἄρ᾽ Ἀθήνας", &["ἄρ", "᾽", "Ἀθήνας"]);
-    }
-
-    #[test]
-    fn test_split_word_punctuation() {
-        assert_eq!(split_word_punctuation("λέξη..."), ("", "λέξη", "..."));
-        assert_eq!(split_word_punctuation(";?λέξη"), (";?", "λέξη", ""));
-        assert_eq!(split_word_punctuation(";?λέξη..."), (";?", "λέξη", "..."));
-        assert_eq!(split_word_punctuation(";?λέ-ξη..."), (";?", "λέ-ξη", "..."));
-        assert_eq!(split_word_punctuation(";?..."), (";?...", "", ""));
-        assert_eq!(split_word_punctuation("2ος"), ("2", "ος", ""));
     }
 
     #[test]
