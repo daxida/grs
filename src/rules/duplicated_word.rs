@@ -9,7 +9,7 @@ use crate::tokenizer::{Doc, Token};
 // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
 #[rustfmt::skip]
 const DUPLICATED_WORD_EXCEPTIONS: &[&str] = &[
-    "κάτω", "γύρω", "μπροστά", "πλάι",
+    "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα",
     "λίγα", "πολύ",
     "καλά",
     "πρώτα", "πρώτη", "πρώτον",
@@ -17,7 +17,7 @@ const DUPLICATED_WORD_EXCEPTIONS: &[&str] = &[
     "πότε",
     "κάπου", "όπως",
     "πρωί", "νωρίς",
-    "γρήγορα", "σιγά", "αργά",
+    "γρήγορα", "σιγά", "αργά", "χονδρά",
     "ίσα",
     "δυο", "τρία", "πενήντα",
     "κούτσα",
@@ -81,6 +81,7 @@ mod tests {
     }
 
     test_dw!(base, "λάθος λάθος", false);
-    test_dw!(numbers_one, "δυο δυο", true);
-    test_dw!(numbers_two, "τρία τρία", true);
+    test_dw!(numbers1, "δυο δυο", true);
+    test_dw!(numbers2, "τρία τρία", true);
+    test_dw!(other1, "θα διαφθαρούν όλα πέρα πέρα", true);
 }
