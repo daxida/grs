@@ -3,6 +3,23 @@ use crate::range::TextRange;
 use crate::registry::Rule;
 
 const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
+    // Superfluous diaereses
+    ("άϊ", "άι"),
+    ("άϋ", "άυ"),
+    ("έϊ", "έι"),
+    ("έϋ", "έυ"),
+    ("όϊ", "όι"),
+    ("όϋ", "όυ"),
+    ("ούϊ", "ούι"),
+    // Capitalized
+    ("Άι", "Άι"),
+    ("Άυ", "Άυ"),
+    ("Έι", "Έι"),
+    ("Έυ", "Έυ"),
+    ("Όι", "Όι"),
+    ("Όυ", "Όυ"),
+    ("Ούι", "Ούι"),
+    // Others
     ("κρεββάτι", "κρεβάτι"),
     ("Κρεββάτι", "Κρεβάτι"),
     ("εξ άλλου", "εξάλλου"),
@@ -13,7 +30,8 @@ const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
 
 /// Outdated spelling of strings.
 ///
-/// Two caveats:
+/// Some caveats:
+/// - If this becomes too slow, consider using aho-corasick
 /// - Without regex or some more logic, this is agnostic of word boundaries
 ///   and could replace chunks inside words. This is fine.
 /// - The const table needs manual adding of uppercase variants since the
@@ -21,7 +39,7 @@ const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
 ///   how to build a const array with capitalized variants at compile time.
 pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
     // Probably the other order is a better choice
-    for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE.iter() {
+    for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE {
         // There must be sth better without break
         if let Some((start, _)) = text.match_indices(target).next() {
             let range = TextRange::new(start, start + target.len());
@@ -34,5 +52,21 @@ pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
                 }),
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        let text = "γάιδαρος αρσενικό (θηλυκό γαϊδάρα ή γαϊδούρα)";
+        let mut diagnostics = Vec::new();
+        outdated_spelling(text, &mut diagnostics);
+        assert!(diagnostics.is_empty());
+
+        outdated_spelling("κακόϋπνος", &mut diagnostics);
+        assert!(!diagnostics.is_empty());
     }
 }
