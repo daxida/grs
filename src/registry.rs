@@ -27,6 +27,7 @@ impl Rule {
                 | RemoveFinalN
                 | OutdatedSpelling
                 | MonosyllableAccented
+                | MixedScripts
                 | AmbiguousChar
         )
     }

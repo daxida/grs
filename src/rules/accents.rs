@@ -118,7 +118,7 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         // Ignore if all caps. Ex. ΒΟΥΤΥΡΑ is correct.
         || token.text.chars().all(char::is_uppercase)
         // Ignore acronyms and some other compounds. Ex. Α.Υ., Ο,ΤΙ ΝΑ 'ΝΑΙ
-        || token.text.contains(['.', '|', ':', ',', '/', '-'])
+        || token.text.contains(['.', '|', ':', ',', '/', '-', '('])
     {
         return None;
     }
@@ -211,14 +211,14 @@ mod tests {
 
     // ** Monosyllable
     // * Has error
-    test_mono!(mono_base_one, "μέλ", false);
-    test_mono!(mono_base_two, "μέλ  ", false);
+    test_mono!(mono_base1, "μέλ", false);
+    test_mono!(mono_base2, "μέλ  ", false);
     // * Has no error
-    test_mono!(mono_period_one, "μέλ. Και άλλα.", true);
-    test_mono!(mono_period_two, "μέλ. και άλλα.", true);
-    test_mono!(mono_ellipsis_one, "μέλ... Και άλλα.", true);
-    test_mono!(mono_ellipsis_two, "μέλ... και άλλα.", true);
-    test_mono!(mono_ellipsis_three, "μέλ… και άλλα.", true);
+    test_mono!(mono_period1, "μέλ. Και άλλα.", true);
+    test_mono!(mono_period2, "μέλ. και άλλα.", true);
+    test_mono!(mono_ellipsis1, "μέλ... Και άλλα.", true);
+    test_mono!(mono_ellipsis2, "μέλ... και άλλα.", true);
+    test_mono!(mono_ellipsis3, "μέλ… και άλλα.", true);
     test_mono!(mono_old_numbers, "είς των βοσκών", true);
     test_mono!(mono_abbreviation, "ἄρ᾽ Ἀθήνας", true);
 
@@ -229,7 +229,8 @@ mod tests {
     test_multi!(multi_period_one, "επεξ. επιλεγμένο", true);
     test_multi!(multi_period_two, "επεξ. Επιλεγμένο", true);
     test_multi!(multi_acronym, "Α.Υ.", true);
-    test_multi!(multi_punct, "του/της", true);
+    test_multi!(multi_punct1, "του/της", true);
+    test_multi!(multi_punct2, "ΒΙΒΛΙΟΝ Θ(Ο τύπος)", true);
     test_multi!(multi_hyphen, "Μπαρτ-Χιρστ", true);
     test_multi!(multi_hyphen_capital, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
     test_multi!(multi_hyphen_variation, "5ος–6ος αιώνας π.Χ.", true);
