@@ -7,7 +7,7 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
 use grac::add_acute_at;
-use grac::constants::APOSTROPHES;
+use grac::constants::{ALT_SYLLABIC, APOSTROPHES};
 use grac::diacritic_pos;
 use grac::Diacritic;
 
@@ -35,15 +35,6 @@ fn followed_by_elliptic_abbreviation(token: &Token, doc: &Doc) -> bool {
     // after the current token.
     false
 }
-
-/// Greek words with two accepted syllabifications
-//
-// This could probably go in grac
-#[rustfmt::skip]
-pub const ALT_SYLLABIC: &[&str] = &[
-    "ήλιος", "Ήλιος",
-    "έννοια", "Έννοια",
-];
 
 /// Pronouns
 ///
