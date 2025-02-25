@@ -302,9 +302,7 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
         transformed = transformed_this_iter;
 
         iterations += 1;
-        if iterations > MAX_ITERATIONS {
-            panic!()
-        }
+        assert!(iterations < MAX_ITERATIONS, "Exceeded maximum iterations");
     }
 
     final_transformed.push_str(&transformed);

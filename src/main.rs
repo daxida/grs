@@ -105,8 +105,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
 
     if args.to_monotonic {
         for file in &text_files {
-            let text = std::fs::read_to_string(file)
-                .unwrap_or_else(|err| panic!("Failed to read file {file:?}: {err}"));
+            let text = match std::fs::read_to_string(file) {
+                Ok(content) => content,
+                Err(err) => {
+                    eprintln!("Failed to read file {file:?}: {err}");
+                    return Err(ExitStatus::Failure);
+                }
+            };
             let monotonic = grac::to_monotonic(&text);
             if let Err(err) = std::fs::write(file, &monotonic) {
                 eprintln!("Failed to write to file {file:?}: {err}");
@@ -172,8 +177,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     let mut global_statistics_counter = HashMap::new();
 
     for file in &text_files {
-        let text = std::fs::read_to_string(file)
-            .unwrap_or_else(|err| panic!("Failed to read file {file:?}: {err}"));
+        let text = match std::fs::read_to_string(file) {
+            Ok(content) => content,
+            Err(err) => {
+                eprintln!("Failed to read file {file:?}: {err}");
+                return Err(ExitStatus::Failure);
+            }
+        };
 
         // Header
         // println!("{}", file.to_str().unwrap().purple());
