@@ -4,10 +4,11 @@ use itertools::Itertools;
 use std::collections::HashMap;
 
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::rules::*;
-use crate::tokenizer::{tokenize, Doc, Token};
+use crate::tokenizer::{tokenize, Token};
 
 type Config<'a> = &'a [Rule];
 

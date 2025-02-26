@@ -1,6 +1,8 @@
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::doc::Doc;
+use crate::doc::{is_abbreviation_or_ends_with_dot, previous_token_is_num};
 use crate::registry::Rule;
-use crate::tokenizer::{Doc, Token};
+use crate::tokenizer::Token;
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
 use grac::{ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, Diacritic};
 
@@ -12,40 +14,6 @@ fn is_monosyllable_accented(token: &Token) -> bool {
         && !ends_with_diphthong(token.text)
         // Expensive check
         && token.syllables().len() == 1
-}
-
-/// A word is considered an abbreviation if it is followed by an apostrophe.
-/// Ex. όλ' αυτά
-///
-/// A dot must be treated like a black box since there is no way to distinguish
-/// if it is a period, an ellipsis or an abbreviation dot. Checking if the next word
-/// is capitalized is not a solution, since an abbreviation might be followed by
-/// a proper noun, invalidating the logic. Ex. Λεωφ. Κηφισού.
-fn is_abbreviation_or_ends_with_dot(token: &Token, doc: &Doc) -> bool {
-    if let Some(ntoken) = doc.get(token.index + 1) {
-        if token.whitespace.is_empty() && ntoken.punct {
-            if let Some(npunct_first_char) = ntoken.text.chars().next() {
-                if ['.', '…'].contains(&npunct_first_char)
-                    || APOSTROPHES.contains(&npunct_first_char)
-                {
-                    return true;
-                }
-            }
-        }
-    }
-
-    false
-}
-
-fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
-    match doc.get(token.index.saturating_sub(1)) {
-        Some(ptoken) => {
-            ptoken.punct
-                && ptoken.whitespace.is_empty()
-                && ptoken.text.chars().all(|c| c.is_ascii_digit())
-        }
-        None => false,
-    }
 }
 
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {

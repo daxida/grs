@@ -1,3 +1,4 @@
+use crate::doc::Doc;
 use crate::range::TextRange;
 use colored::Colorize;
 use grac::is_greek_word;
@@ -82,8 +83,6 @@ impl<'a> Token<'a> {
         ctx.replace('\n', "⏎")
     }
 }
-
-pub type Doc<'a> = Vec<Token<'a>>;
 
 // Note: numbers are treated as PUNCT (not ideal)
 pub fn tokenize(text: &str) -> Doc {

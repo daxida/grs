@@ -1,7 +1,8 @@
 use crate::diagnostic::Diagnostic;
+use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
-use crate::tokenizer::{Doc, Token};
+use crate::tokenizer::Token;
 
 // Based on common expressions
 //

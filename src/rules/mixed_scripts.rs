@@ -1,6 +1,7 @@
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::doc::Doc;
 use crate::registry::Rule;
-use crate::tokenizer::{Doc, Token};
+use crate::tokenizer::Token;
 use grac::is_greek_char;
 
 const LATIN_TO_GREEK: [(char, char); 22] = [

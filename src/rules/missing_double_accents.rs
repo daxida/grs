@@ -4,8 +4,10 @@
 // * και το κτήριο του, παλαιού πλέον, Μουσείου Ακρόπολης
 
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::doc::followed_by_elliptic_abbreviation;
+use crate::doc::Doc;
 use crate::registry::Rule;
-use crate::tokenizer::{Doc, Token};
+use crate::tokenizer::Token;
 use grac::add_acute_at;
 use grac::constants::{ALT_SYLLABIC, APOSTROPHES};
 use grac::diacritic_pos;
@@ -14,26 +16,6 @@ use grac::Diacritic;
 /// Returns `true` if this `word` has only an accent on the antepenultimate.
 fn is_proparoxytone_strict(word: &str) -> bool {
     diacritic_pos(word, Diacritic::ACUTE) == [3]
-}
-
-/// Returns `true` if this `token` (or some combination of tokens starting
-/// at this token) conforms an abbreviation which fulfills the role of
-/// an ellipsis. Ex. κ.τ.λ., κτλ, κτλ.
-///
-/// Includes common typos like κ.λ.π. instead of κ.λπ.
-#[allow(unused_variables)]
-fn followed_by_elliptic_abbreviation(token: &Token, doc: &Doc) -> bool {
-    // The last dot must be removed because of our tokenizing logic
-    if [
-        "κ.τ.λ", "κτλ", "κ.λπ", "κ.λ.π", "κ.τ.ό", "κ.τ.ο", "κ.τ.ρ", "κ.τ.τ", "κ.ά", "κ.α",
-    ]
-    .contains(&token.text)
-    {
-        return true;
-    }
-    // Here some more logic could be added to deal with compounds
-    // after the current token.
-    false
 }
 
 /// Pronouns
@@ -64,7 +46,7 @@ const STOKEN_SEPARATOR_WORDS: &[&str] = &[
     // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
     "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
     // Others
-    "με", "όταν", "θα",
+    "με", "όταν", "θα", "μήπως",
 ];
 
 // https://el.wiktionary.org/wiki/το
@@ -224,9 +206,10 @@ mod tests {
 
     test_mda!(basic1, "ανακαλύφθηκε το.", false);
     test_mda!(basic2, "Όταν ανακαλύφθηκε το.", false);
-    test_mda!(stoken_separator1, "αντίκτυπο του και", false);
-    test_mda!(stoken_separator2, "αντίκτυπο του κ.λ.π.", false);
-    test_mda!(stoken_separator3, "αντίκτυπο του κ.α.", false);
+    test_mda!(stoken1, "αντίκτυπο του και", false);
+    test_mda!(stoken2, "αντίκτυπο του κ.λ.π.", false);
+    test_mda!(stoken3, "αντίκτυπο του κ.α.", false);
+    test_mda!(stoken4, "Η ύπαρξη μου μήπως;", false);
     test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
     test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
 
@@ -245,6 +228,9 @@ mod tests {
     test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
     test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
     test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+
+    // Regression
+    test_mda!(reg1, "Κάθε κίνηση που κάνετε μου κοστίζει ένα...", true);
 
     // Experimental
     test_mda!(synizesis, "Στάσου, έννοια σου!", true);
