@@ -194,14 +194,17 @@ mod tests {
     // * Has error
     test_multi!(multi_base, "καλημερα", false);
     // * Has no error
-    test_multi!(multi_period_one, "επεξ. επιλεγμένο", true);
-    test_multi!(multi_period_two, "επεξ. Επιλεγμένο", true);
+    test_multi!(multi_period1, "επεξ. επιλεγμένο", true);
+    test_multi!(multi_period2, "επεξ. Επιλεγμένο", true);
     test_multi!(multi_acronym, "Α.Υ.", true);
     test_multi!(multi_punct1, "του/της", true);
     test_multi!(multi_punct2, "ΒΙΒΛΙΟΝ Θ(Ο τύπος)", true);
-    test_multi!(multi_hyphen, "Μπαρτ-Χιρστ", true);
-    test_multi!(multi_hyphen_capital, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
-    test_multi!(multi_hyphen_variation, "5ος–6ος αιώνας π.Χ.", true);
+    test_multi!(multi_hyphen1, "Μπαρτ-Χιρστ", true);
+    test_multi!(multi_hyphen2, "ΒΟΥΤΥΡΑ-ΕΛΑΙΑ", true);
+    test_multi!(multi_hyphen3, "5ος–6ος αιώνας π.Χ.", true);
+    test_multi!(multi_apostrophe1, "μου 'ρχεται να", true);
+    test_multi!(multi_apostrophe2, "μου ' ρχεται να", true);
+    test_multi!(multi_apostrophe3, "μου' ρχεται να", true);
     test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
     test_multi!(synizesis, "δια", true);
