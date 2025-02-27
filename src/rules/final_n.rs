@@ -12,9 +12,9 @@ const PLOSIVE_CLUSTERS: [&str; 16] = [
 
 // Notes:
 // - αυτή αυτήν requires some extra work
-// - μη and δε are also probably not safe.
-const CANDIDATES_REM_N: &[&str] = &["την", "στην", "Την", "Στην"]; // , "μην", "δεν"];
-const CANDIDATES_ADD_N: &[&str] = &["τη", "στη", "Τη", "Στη"]; // , "μη", "δε"];
+// - μη and δε are also probably not safe (to add).
+const CANDIDATES_REM: [&str; 4] = ["την", "στην", "Την", "Στην"]; // "μην", "δεν"];
+const CANDIDATES_ADD: [&str; 4] = ["τη", "στη", "Τη", "Στη"]; // , "μη", "δε"];
 
 fn remove_last_char(s: &str) -> &str {
     let mut chars = s.chars();
@@ -23,14 +23,12 @@ fn remove_last_char(s: &str) -> &str {
 }
 
 fn starts_with_vowel_or_plosive(token: &Token) -> bool {
-    if let Some(ch) = token.text.chars().next() {
+    token.text.chars().next().map_or(false, |ch| {
         PLOSIVE_CLUSTERS
             .iter()
             .any(|&prefix| token.text.starts_with(prefix))
             || is_vowel_el(ch)
-    } else {
-        false
-    }
+    })
 }
 
 // Used at some point to get the next token in both rules in this module.
@@ -49,7 +47,7 @@ fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a To
 }
 
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if CANDIDATES_REM_N.contains(&token.text) {
+    if CANDIDATES_REM.contains(&token.text) {
         // Treat archaic construction "εις την" as valid
         if token.text == "την" {
             if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
@@ -59,11 +57,10 @@ fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
             }
         }
 
-        let ntoken = doc.get(token.index + 1)?;
-        if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
-            return Some(());
-        } else {
-            return None;
+        if let Some(ntoken) = doc.get(token.index + 1) {
+            if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
+                return Some(());
+            }
         }
     }
     None
@@ -83,7 +80,7 @@ pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic
 }
 
 fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if CANDIDATES_ADD_N.contains(&token.text) {
+    if CANDIDATES_ADD.contains(&token.text) {
         // Treat archaic construction "εν τη" as valid
         if token.text == "τη" {
             if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
@@ -104,8 +101,6 @@ fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
             } else {
                 Some(())
             };
-        } else {
-            return None;
         }
     }
 

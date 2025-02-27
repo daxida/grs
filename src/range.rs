@@ -21,9 +21,9 @@ impl fmt::Debug for TextRange {
 
 impl TextRange {
     #[inline]
-    pub const fn new(start: TextSize, end: TextSize) -> TextRange {
+    pub const fn new(start: TextSize, end: TextSize) -> Self {
         assert!(start <= end);
-        TextRange { start, end }
+        Self { start, end }
     }
 }
 

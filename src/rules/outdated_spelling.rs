@@ -2,7 +2,7 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::range::TextRange;
 use crate::registry::Rule;
 
-const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
+const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
     // Superfluous diaereses
     ("άϊ", "άι"),
     ("άϋ", "άυ"),
@@ -29,14 +29,14 @@ const OUTDATED_SPELLINGS_MULTIPLE: &[(&str, &str)] = &[
 ];
 
 /// Outdated spelling of strings.
-///
-/// Some caveats:
-/// - If this becomes too slow, consider using aho-corasick
-/// - Without regex or some more logic, this is agnostic of word boundaries
-///   and could replace chunks inside words. This is fine.
-/// - The const table needs manual adding of uppercase variants since the
-///   prize of casting .to_lowercase() is too harsh, and I have not figured out
-///   how to build a const array with capitalized variants at compile time.
+//
+// Some caveats:
+// - If this becomes too slow, consider using aho-corasick
+// - Without regex or some more logic, this is agnostic of word boundaries
+//   and could replace chunks inside words. This is fine.
+// - The const table needs manual adding of uppercase variants since the
+//   prize of casting .to_lowercase() is too harsh, and I have not figured out
+//   how to build a const array with capitalized variants at compile time.
 pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
     // Probably the other order is a better choice
     for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE {

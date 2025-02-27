@@ -3,4 +3,5 @@ t path="texts/dump_lg.txt":
   grs {{path}} --select ALL --statistics
 
 lint:
-  cargo clippy --all --fix -- -Wclippy::all -Wclippy::pedantic -Wclippy::nursery
+  cargo clippy --all-targets --all-features -- -W clippy::nursery -W clippy::pedantic -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::cast_precision_loss
+

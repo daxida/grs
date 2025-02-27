@@ -33,14 +33,12 @@ pub fn is_abbreviation_or_ends_with_dot(token: &Token, doc: &Doc) -> bool {
 }
 
 pub fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
-    match doc.get(token.index.saturating_sub(1)) {
-        Some(ptoken) => {
+    doc.get(token.index.saturating_sub(1))
+        .map_or(false, |ptoken| {
             ptoken.punct
                 && ptoken.whitespace.is_empty()
                 && ptoken.text.chars().all(|c| c.is_ascii_digit())
-        }
-        None => false,
-    }
+        })
 }
 
 /// Returns `true` if this `token` (or some combination of tokens starting

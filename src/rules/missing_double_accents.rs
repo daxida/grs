@@ -18,11 +18,8 @@ fn is_proparoxytone_strict(word: &str) -> bool {
     diacritic_pos(word, Diacritic::ACUTE) == [3]
 }
 
-/// Pronouns
-///
-/// It is fine to only consider lowercase since they are never
-/// expected to be capitalized in our logic.
-pub const PRON: &[&str] = &[
+// Contains only lowercase. They are not expected to be capitalized in our logic.
+pub const PRONOUNS: [&str; 15] = [
     "με", "σε", "τον", "την", "τη", "το", // Accusative Singular
     "μας", "σας", "τους", "τις", "τα", // Accusative Plural
     "μου", "σου", "του", "της", // Genitive Singular
@@ -34,7 +31,7 @@ pub const PRON: &[&str] = &[
 /// From \" onward they come from testing against the wikidump,
 /// and, even if rare, they make sense to keep.
 #[rustfmt::skip]
-const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
+const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 12] = [
     "...", "…", "«", "\"", "“",
     // Testing
     "[", "{", "*", "<", "#", "}", ":",
@@ -42,7 +39,7 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: &[&str] = &[
 
 /// Words that signify some separations that allows us to detect an error.
 #[rustfmt::skip]
-const STOKEN_SEPARATOR_WORDS: &[&str] = &[
+const STOKEN_SEPARATOR_WORDS: [&str; 13] = [
     // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
     "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
     // Others
@@ -50,7 +47,7 @@ const STOKEN_SEPARATOR_WORDS: &[&str] = &[
 ];
 
 // https://el.wiktionary.org/wiki/το
-const SE_TO_COMPOUNDS: &[&str] = &[
+const SE_TO_COMPOUNDS: [&str; 10] = [
     "στου",
     "στης",
     "στον",
@@ -68,10 +65,11 @@ const SE_TO_COMPOUNDS: &[&str] = &[
 /// Uses an option so we can gracefully exit when there is not a next token
 ///
 /// The proparoxytone test is the most expensive part, so we try to compute it last.
+#[allow(clippy::similar_names)]
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
-    if ntoken.punct || !PRON.contains(&ntoken.text) {
+    if ntoken.punct || !PRONOUNS.contains(&ntoken.text) {
         return None;
     }
 

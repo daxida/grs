@@ -88,6 +88,7 @@ fn find_text_files_in_tests() -> Result<Vec<PathBuf>, ExitStatus> {
 }
 
 // TODO: run_for_file
+#[allow(clippy::too_many_lines)]
 fn run() -> Result<ExitStatus, ExitStatus> {
     let args = Args::parse();
 
@@ -275,19 +276,19 @@ mod tests {
 
     #[test]
     fn test_ad_hoc() {
-        let text = r#"
+        let text = r"
         φήμη στην Χάρλεϋ Στρήτ. Θα 
-        "#
+        "
         .trim()
-        .split_inclusive("\n")
-        .map(|w| w.trim_start())
+        .split_inclusive('\n')
+        .map(str::trim_start)
         .collect::<String>();
 
         let config_str = ["MA"];
-        let config: Vec<Rule> = config_str
+        let config: Vec<_> = config_str
             .iter()
             .map(|code| code.parse::<Rule>().unwrap())
-            .collect::<Vec<_>>();
+            .collect();
 
         println!("Text: '{}'", &text);
         for token in tokenize(&text) {

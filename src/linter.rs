@@ -7,8 +7,10 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
-use crate::rules::*;
 use crate::tokenizer::{tokenize, Token};
+
+#[allow(clippy::wildcard_imports)]
+use crate::rules::*;
 
 type Config<'a> = &'a [Rule];
 
@@ -174,7 +176,7 @@ fn get_context_message(text: &str, range: &TextRange) -> String {
     .to_string()
 }
 
-fn get_rich_context_message(text: &str, range: &TextRange, rule: &Rule) -> String {
+fn get_rich_context_message(text: &str, range: &TextRange, rule: Rule) -> String {
     let ctx = get_context_message(text, range);
     let fixable = if rule.has_fix() {
         format!("[{}]", "*".to_string().cyan())
@@ -189,19 +191,21 @@ const MAX_ITERATIONS: usize = 100;
 
 type Counter = HashMap<Rule, usize>;
 
-/// Should return result
-///
-/// cf
-/// ruff_linter/src/linter.rs::lint_fix
-/// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/linter.rs
-///
-/// ruff_linter/src/fix/mod.rs
-/// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/fix/mod.rs
-///
-/// NOTE:
-/// * Should do statistics always, for safety // and it's cheap
-/// * Uses rules with no fixes. We should remove those from the config
-///   since they are not printed nor, obviously, fixable.
+/// Repeatedly fix text until stable.
+//
+// Should return result
+//
+// cf
+// ruff_linter/src/linter.rs::lint_fix
+// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/linter.rs
+//
+// ruff_linter/src/fix/mod.rs
+// https://github.com/astral-sh/ruff/blob/main/crates/ruff_linter/src/fix/mod.rs
+//
+// NOTE:
+// * Should do statistics always, for safety // and it's cheap
+// * Uses rules with no fixes. We should remove those from the config
+//   since they are not printed nor, obviously, fixable.
 pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
     let mut transformed = text.to_string();
     // For debugging. To remove eventually.
@@ -303,7 +307,10 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
         transformed = transformed_this_iter;
 
         iterations += 1;
-        assert!(iterations < MAX_ITERATIONS, "Exceeded maximum iterations");
+        if iterations == MAX_ITERATIONS {
+            eprintln!("Warning: exceeded maximum iterations in fix.");
+            break;
+        }
     }
 
     final_transformed.push_str(&transformed);
@@ -319,7 +326,7 @@ pub fn lint_only(text: &str, config: Config) -> (Vec<String>, Counter) {
         .iter()
         .map(|diagnostic| {
             *statistics.entry(diagnostic.kind).or_insert(0) += 1;
-            get_rich_context_message(text, &diagnostic.range, &diagnostic.kind)
+            get_rich_context_message(text, &diagnostic.range, diagnostic.kind)
         })
         .collect();
 

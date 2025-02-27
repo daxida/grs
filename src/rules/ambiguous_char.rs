@@ -3,10 +3,10 @@ use crate::range::TextRange;
 use crate::registry::Rule;
 
 // It is easier to work with strings, but these should really be chars
-const AMBIGUOUS_PAIRS: &[(&str, &str)] = &[("µ", "μ")];
+const AMBIGUOUS_PAIRS: [(&str, &str); 1] = [("µ", "μ")];
 
 pub fn ambiguous_char(text: &str, diagnostics: &mut Vec<Diagnostic>) {
-    for (target, destination) in AMBIGUOUS_PAIRS.iter() {
+    for (target, destination) in AMBIGUOUS_PAIRS {
         if let Some((start, _)) = text.match_indices(target).next() {
             let range = TextRange::new(start, start + target.len());
             diagnostics.push(Diagnostic {

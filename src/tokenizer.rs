@@ -8,8 +8,16 @@ use grac::syllabify_el;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// Very simplified version of:
-/// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
+/// Token type.
+///
+/// Also stores if the token is punctuation or a Greek word since these are
+/// widely used through most rules. In case of huge corpora analysis this
+/// may be an issue.
+///
+/// Following spaCy, whitespace is attached to the previous token.
+//
+// Very simplified version of:
+// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Token<'a> {
@@ -52,7 +60,7 @@ impl<'a> Token<'a> {
 
     /// Start and end byte of the text part of the token.
     ///
-    /// Compare it with Token::range, which includes whitespace.
+    /// Compare it with [`Token::range`], which includes whitespace.
     pub const fn range_text(&self) -> TextRange {
         if self.whitespace.is_empty() {
             self.range
@@ -165,7 +173,6 @@ macro_rules! test_rule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use itertools::Itertools;
 
     fn splitting(text: &str, expected: &[&str]) {
         let received: Vec<_> = tokenize(text).iter().map(|token| token.text).collect();
@@ -230,13 +237,6 @@ mod tests {
             },
         ];
 
-        for pair in doc.iter().zip_longest(expected.iter()) {
-            match pair {
-                itertools::EitherOrBoth::Both(rec, exp) => assert_eq!(rec, exp),
-                _ => assert!(false),
-            }
-        }
-
         assert_eq!(doc, expected);
     }
 
@@ -273,13 +273,6 @@ mod tests {
                 greek: true,
             },
         ];
-
-        for pair in doc.iter().zip_longest(expected.iter()) {
-            match pair {
-                itertools::EitherOrBoth::Both(rec, exp) => assert_eq!(rec, exp),
-                _ => assert!(false),
-            }
-        }
 
         assert_eq!(doc, expected);
     }

@@ -9,7 +9,7 @@ use crate::tokenizer::Token;
 // Should also add pronouns and not open this can of worms:
 // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
 #[rustfmt::skip]
-const DUPLICATED_WORD_EXCEPTIONS: &[&str] = &[
+const DUPLICATED_WORD_EXCEPTIONS: [&str; 38] = [
     "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα",
     "λίγο", "λίγα", "πολύ",
     "καλά",
@@ -28,22 +28,20 @@ const DUPLICATED_WORD_EXCEPTIONS: &[&str] = &[
     "με", "μας", "μου", "του", "της", "τους",
 ];
 
-fn duplicated_word_opt(token: &Token, doc: &Doc) -> Option<()> {
-    // Ignore punct
-    if token.punct || token.text.is_empty() {
+fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
+    debug_assert!(!token.punct && token.greek);
+
+    if token.text.is_empty() || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text) {
         return None;
     }
 
-    if DUPLICATED_WORD_EXCEPTIONS.contains(&token.text) || token.punct {
-        return None;
+    if let Some(ntoken) = doc.get(token.index + 1) {
+        if token.text == ntoken.text {
+            return Some(ntoken);
+        }
     }
 
-    let ntoken = doc.get(token.index + 1)?;
-    if token.text == ntoken.text {
-        Some(())
-    } else {
-        None
-    }
+    None
 }
 
 /// Detect duplicated word
@@ -58,9 +56,7 @@ fn duplicated_word_opt(token: &Token, doc: &Doc) -> Option<()> {
 /// approach, sometimes what is needed is extra punctuation:
 /// '— Τζωρτζ Τζωρτζ.' > '— Τζωρτζ, Τζωρτζ!'
 pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if duplicated_word_opt(token, doc).is_some() {
-        // Guaranteed to exist at this point.
-        let ntoken = doc.get(token.index + 1).unwrap();
+    if let Some(ntoken) = duplicated_word_opt(token, doc) {
         let range = TextRange::new(token.range.start(), ntoken.range_text().end());
         diagnostics.push(Diagnostic {
             kind: Rule::DuplicatedWord,
