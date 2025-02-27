@@ -17,50 +17,16 @@
 * clippy?
 */
 
-use itertools::Itertools;
-use std::collections::HashMap;
-use strum::IntoEnumIterator;
-
-use grs::linter::{fix, lint_only};
-use grs::registry::{Rule, RULES};
-use grs::text_diff::CodeDiff;
-
 use clap::Parser;
 use colored::Colorize;
+use itertools::Itertools;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
-#[command(name = "grs", about = "Grs: a rule-based spell checker for Greek.")]
-pub struct Args {
-    /// Files to process. Anything other than .txt files will be ignored.
-    #[arg(value_parser, required = true)]
-    files: Vec<PathBuf>,
-
-    /// Replace the input file.
-    #[arg(long)]
-    fix: bool,
-
-    /// Show differences between original and corrected text.
-    #[arg(long)]
-    diff: bool,
-
-    /// Specify which types of mistakes to check.
-    #[arg(long, value_delimiter = ',')]
-    select: Option<Vec<String>>,
-
-    /// Specify which types of mistakes to ignore.
-    #[arg(long)]
-    ignore: Option<String>,
-
-    /// Show statistics after processing.
-    #[arg(long)]
-    statistics: bool,
-
-    /// Convert text to monotonic Greek.
-    // Does this belong to this project?
-    #[arg(long = "to-monotonic")]
-    to_monotonic: bool,
-}
+use grs::cli::Args;
+use grs::linter::{fix, lint_only};
+use grs::registry::Rule;
+use grs::text_diff::CodeDiff;
 
 #[derive(Copy, Clone)]
 pub enum ExitStatus {
@@ -133,47 +99,36 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         println!("Diff is enabled.");
     }
 
-    let mut config_str: Vec<String> = match args.select {
-        None => ["MDA", "OS", "MA", "MNA"]
+    let default_rules: Vec<_> = ["MDA", "OS", "MA", "MNA"]
+        .iter()
+        .map(|code| code.parse::<Rule>().unwrap())
+        .collect();
+
+    let mut config: Vec<Rule> = args.select.map_or(default_rules, |selection| {
+        selection
             .iter()
-            .map(|s| s.to_string())
-            .collect(),
-        Some(selection) => {
-            if selection.contains(&"ALL".to_string()) {
-                Rule::iter().map(|rule| rule.to_string()).collect()
-            } else {
-                selection
-            }
-        }
-    };
+            .flat_map(grs::cli::RuleSelector::rules)
+            .unique()
+            .collect()
+    });
 
     // Does not crash if rules to ignore were not in config.
     if let Some(selection) = args.ignore {
-        let ignore_rules: Vec<String> = selection.split(',').map(|c| c.to_string()).collect();
-        config_str.retain(|rule| !ignore_rules.contains(rule));
+        config.retain(|rule| {
+            !selection
+                .iter()
+                .any(|selector| selector.rules().contains(rule))
+        });
     }
 
-    // Convert to a Vec<Rules>
-    println!("Config: {config_str:?}");
-    // TODO: This should be done at CLI parsing
-    let config_res: Result<Vec<Rule>, ExitStatus> = config_str
-        .iter()
-        .map(|code| {
-            code.parse::<Rule>().map_err(|err| {
-                // Print all rules and exit
-                eprintln!(
-                    "{}\n  [possible values: {}]",
-                    err,
-                    RULES
-                        .iter()
-                        .map(|(code, _)| code.to_string().green())
-                        .join(", ")
-                );
-                ExitStatus::Error
-            })
-        })
-        .collect();
-    let config = config_res?;
+    println!(
+        "Config: [{}]",
+        config
+            .iter()
+            .map(|rule| rule.to_string().green().to_string())
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
 
     let mut global_statistics_counter = HashMap::new();
 

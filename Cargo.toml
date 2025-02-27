@@ -6,7 +6,7 @@ edition = "2021"
 [lib]
 
 [dependencies]
-clap = { version = "4.5.23", features = ["derive"] }
+clap = { version = "4.5.23", features = ["derive", "string"] }
 colored = "3.0.0"
 grac = { git = "https://github.com/daxida/grac" }
 itertools = "0.14.0"

@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod diagnostic;
 pub mod doc;
 pub mod range;
