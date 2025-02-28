@@ -16,6 +16,33 @@ fn is_monosyllable_accented(token: &Token) -> bool {
         && token.syllables().len() == 1
 }
 
+// This extra list is intended to deal with τί and ποιός variants.
+//
+// While τι is already detected, ποιός escapes our logic by not being
+// a monosyllable once it has the accent.
+//
+// Note that we don't include ποιόν, ποιού since they are ambiguous
+// and can come from the noun ποιόν.
+const EXTRA_MONOSYLLABLES: [&str; 16] = [
+    "ποιός",
+    "ποιό",
+    "ποιοί",
+    "ποιών",
+    "ποιούς",
+    "ποιά",
+    "ποιάς",
+    "ποιές",
+    // Capitalized
+    "Ποιός",
+    "Ποιό",
+    "Ποιοί",
+    "Ποιών",
+    "Ποιούς",
+    "Ποιά",
+    "Ποιάς",
+    "Ποιές",
+];
+
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
         || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text)
@@ -25,7 +52,7 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    if is_monosyllable_accented(token) {
+    if EXTRA_MONOSYLLABLES.contains(&token.text) || is_monosyllable_accented(token) {
         return Some(());
     }
 
@@ -189,6 +216,12 @@ mod tests {
     test_mono!(mono_ellipsis3, "μέλ… και άλλα.", true);
     test_mono!(mono_old_numbers, "είς των βοσκών", true);
     test_mono!(mono_abbreviation, "ἄρ᾽ Ἀθήνας", true);
+
+    // Ποιος
+    test_mono!(mono_poios1, "Μα ποιός ή ποιά έγραψε το λήμμα;", false);
+    test_mono!(mono_poios2, "Ποιάς φλόγας;", false);
+    test_mono!(mono_poios3, "ηθοποιός", true);
+    test_mono!(mono_poios4, "το ποιόν της κοινωνικής περίθαλψης", true);
 
     // ** Multisyllable
     // * Has error
