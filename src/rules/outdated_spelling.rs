@@ -12,13 +12,13 @@ const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
     ("όϋ", "όυ"),
     ("ούϊ", "ούι"),
     // Capitalized
-    ("Άι", "Άι"),
-    ("Άυ", "Άυ"),
-    ("Έι", "Έι"),
-    ("Έυ", "Έυ"),
-    ("Όι", "Όι"),
-    ("Όυ", "Όυ"),
-    ("Ούι", "Ούι"),
+    ("Άϊ", "Άι"),
+    ("Άϋ", "Άυ"),
+    ("Έϊ", "Έι"),
+    ("Έϋ", "Έυ"),
+    ("Όϊ", "Όι"),
+    ("Όϋ", "Όυ"),
+    ("Ούϊ", "Ούι"),
     // Others
     ("κρεββάτι", "κρεβάτι"),
     ("Κρεββάτι", "Κρεβάτι"),
@@ -33,14 +33,12 @@ const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
 // Some caveats:
 // - If this becomes too slow, consider using aho-corasick
 // - Without regex or some more logic, this is agnostic of word boundaries
-//   and could replace chunks inside words. This is fine.
+//   and could replace chunks inside words. This is fine (for now).
 // - The const table needs manual adding of uppercase variants since the
 //   prize of casting .to_lowercase() is too harsh, and I have not figured out
 //   how to build a const array with capitalized variants at compile time.
 pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
-    // Probably the other order is a better choice
     for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE {
-        // There must be sth better without break
         if let Some((start, _)) = text.match_indices(target).next() {
             let range = TextRange::new(start, start + target.len());
             diagnostics.push(Diagnostic {
@@ -66,7 +64,12 @@ mod tests {
         outdated_spelling(text, &mut diagnostics);
         assert!(diagnostics.is_empty());
 
+        diagnostics.clear();
         outdated_spelling("κακόϋπνος", &mut diagnostics);
+        assert!(!diagnostics.is_empty());
+
+        diagnostics.clear();
+        outdated_spelling("Έϊμι Γουάντζ", &mut diagnostics);
         assert!(!diagnostics.is_empty());
     }
 }
