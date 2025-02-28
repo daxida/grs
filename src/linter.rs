@@ -60,8 +60,13 @@ fn check_raw(text: &str, config: Config) -> Vec<Diagnostic> {
 pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
     let mut diagnostics = vec![];
 
-    // Raw replacements that need no tokenizing
+    // Raw replacements that need no tokenizing.
     diagnostics.extend(check_raw(text, config));
+
+    // Early exit if we do not need tokenizing.
+    if !config.iter().any(|rule| rule.requires_tokenizing()) {
+        return diagnostics;
+    }
 
     let doc = tokenize(text);
 

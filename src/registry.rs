@@ -32,6 +32,10 @@ impl Rule {
                 | AmbiguousChar
         )
     }
+
+    pub const fn requires_tokenizing(&self) -> bool {
+        !matches!(self, Rule::OutdatedSpelling | Rule::AmbiguousChar)
+    }
 }
 
 // This is probably slower than using a match statement in Rule::FromStr
