@@ -1,6 +1,7 @@
-use strum_macros::EnumIter;
+use strum::IntoEnumIterator;
+use strum_macros::{EnumIter, IntoStaticStr};
 
-#[derive(EnumIter, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(EnumIter, IntoStaticStr, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Rule {
     MissingDoubleAccents,
     MissingAccentCapital,
@@ -38,68 +39,66 @@ impl Rule {
     }
 }
 
-// This is probably slower than using a match statement in Rule::FromStr
-// but it has the advantage of being reusable in other parts of the code,
-// like when returning a list of codes if an non existent code is passed
-// to --select via the CLI.
-pub const RULES: &[(&str, Rule)] = &[
-    ("MDA", Rule::MissingDoubleAccents),
-    ("MAC", Rule::MissingAccentCapital),
-    ("DW", Rule::DuplicatedWord),
-    ("AFN", Rule::AddFinalN),
-    ("RFN", Rule::RemoveFinalN),
-    ("OS", Rule::OutdatedSpelling),
-    ("MA", Rule::MonosyllableAccented),
-    ("MNA", Rule::MultisyllableNotAccented),
-    ("MS", Rule::MixedScripts),
-    ("AC", Rule::AmbiguousChar),
-];
+/// Return the code from the name:
+/// MissingDoubleAccents => MDA
+fn name_to_code(name: &str) -> String {
+    name.chars().filter(|c| c.is_uppercase()).collect()
+}
+
+/// Return the rule from the code:
+/// MDA => Rule::MissingDoubleAccents
+fn code_to_rule(code: &str) -> Option<Rule> {
+    Rule::iter().find(|rule| {
+        let name: &'static str = rule.into();
+        name_to_code(name) == code
+    })
+}
+
+/// Return the name of the rule:
+/// Rule::MissingDoubleAccents => MissingDoubleAccents
+fn rule_to_name(rule: Rule) -> &'static str {
+    rule.into()
+}
+
+/// Return the acronym of the rule:
+/// Rule::MissingDoubleAccents => MDA
+fn rule_to_code(rule: Rule) -> String {
+    name_to_code(rule_to_name(rule))
+}
 
 impl std::str::FromStr for Rule {
     type Err = String;
 
     fn from_str(code: &str) -> Result<Self, Self::Err> {
-        for (rule_code, rule) in RULES {
-            if code == *rule_code {
-                return Ok(*rule);
-            }
-        }
-        Err(format!("Unknown rule code: {code}"))
+        code_to_rule(code).ok_or_else(|| format!("Unknown rule code: {code}"))
     }
 }
 
-// Return the acronym of the rule: MDA
 impl std::fmt::Display for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", stringify_code(*self))
+        write!(f, "{}", rule_to_code(*self))
     }
 }
 
-// Return the Pascal case name of the rule: MissingDoubleAccents
 impl std::fmt::Debug for Rule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", stringify(*self))
+        write!(f, "{}", rule_to_name(*self))
     }
 }
 
-const fn stringify(rule: Rule) -> &'static str {
-    match rule {
-        Rule::MissingDoubleAccents => "MissingDoubleAccents",
-        Rule::MissingAccentCapital => "MissingAccentCapital",
-        Rule::DuplicatedWord => "DuplicatedWord",
-        Rule::AddFinalN => "AddFinalN",
-        Rule::RemoveFinalN => "RemoveFinalN",
-        Rule::OutdatedSpelling => "OutdatedSpelling",
-        Rule::MonosyllableAccented => "MonosyllableAccented",
-        Rule::MultisyllableNotAccented => "MultisyllableNotAccented",
-        Rule::MixedScripts => "MixedScripts",
-        Rule::AmbiguousChar => "AmbiguousChar",
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-fn stringify_code(rule: Rule) -> String {
-    stringify(rule)
-        .chars()
-        .filter(|c| c.is_uppercase())
-        .collect()
+    #[test]
+    fn converters() {
+        let name = "MissingDoubleAccents";
+        let code = "MDA";
+        let rule = Rule::MissingDoubleAccents;
+
+        assert_eq!(name_to_code(name), code);
+        assert_eq!(code_to_rule(code), Some(rule));
+        assert_eq!(rule_to_name(rule), name);
+        assert_eq!(rule_to_code(rule), code);
+    }
 }
