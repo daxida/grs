@@ -216,6 +216,8 @@ mod tests {
     test_mono!(mono_ellipsis3, "μέλ… και άλλα.", true);
     test_mono!(mono_old_numbers, "είς των βοσκών", true);
     test_mono!(mono_abbreviation, "ἄρ᾽ Ἀθήνας", true);
+    // After numbers, with and without accent should be accepted
+    test_mono!(mono_number, "του 20ού αιώνα", true);
 
     // Ποιος
     test_mono!(mono_poios1, "Μα ποιός ή ποιά έγραψε το λήμμα;", false);
@@ -238,47 +240,17 @@ mod tests {
     test_multi!(multi_apostrophe1, "μου 'ρχεται να", true);
     test_multi!(multi_apostrophe2, "μου ' ρχεται να", true);
     test_multi!(multi_apostrophe3, "μου' ρχεται να", true);
-    test_multi!(capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
-    test_multi!(final_n, "μιαν ανήσυχη ματιά", true);
-    test_multi!(synizesis, "δια", true);
+    test_multi!(multi_apostrophe4, "να ’λεγε", true);
+    test_multi!(multi_capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
+    test_multi!(multi_final_n, "μιαν ανήσυχη ματιά", true);
+    test_multi!(multi_synizesis, "δια", true);
     test_multi!(multi_final_period, "απεβ. το 330 π.Χ.", true);
     test_multi!(multi_ellipsis, "αλλω… τι;", true);
+    test_multi!(multi_number, "ο 39χρονος αγνοούμενος", true);
 
     // Prostaktikoi
     test_multi!(prostatiko1, "γερο - Ευθύμιο", true);
     test_multi!(prostatiko2, "γερο-Ευθύμιο", true);
     test_multi!(prostatiko3, "παπα - Ευθύμιο", true);
     test_multi!(prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
-
-    // Requires the given token to be on some position > 0
-    #[test]
-    fn multi_apostrophe() {
-        let text = "να ’λεγε";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
-        assert_eq!(doc[2].text, "λεγε");
-        assert!(diagnostics.is_empty());
-    }
-
-    // After numbers, with and without accent should be accepted
-    #[test]
-    fn mono_after_number() {
-        let text = "του 20ού αιώνα";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        monosyllable_accented(&doc[2], &doc, &mut diagnostics);
-        assert_eq!(doc[2].text, "ού");
-        assert!(diagnostics.is_empty());
-    }
-
-    #[test]
-    fn multi_after_number() {
-        let text = "ο 39χρονος αγνοούμενος";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        multisyllable_not_accented(&doc[2], &doc, &mut diagnostics);
-        assert_eq!(doc[2].text, "χρονος");
-        assert!(diagnostics.is_empty());
-    }
 }
