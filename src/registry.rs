@@ -47,7 +47,7 @@ fn name_to_code(name: &str) -> String {
 
 /// Return the rule from the code:
 /// MDA => Rule::MissingDoubleAccents
-fn code_to_rule(code: &str) -> Option<Rule> {
+pub fn code_to_rule(code: &str) -> Option<Rule> {
     Rule::iter().find(|rule| {
         let name: &'static str = rule.into();
         name_to_code(name) == code
@@ -56,13 +56,13 @@ fn code_to_rule(code: &str) -> Option<Rule> {
 
 /// Return the name of the rule:
 /// Rule::MissingDoubleAccents => MissingDoubleAccents
-fn rule_to_name(rule: Rule) -> &'static str {
+pub fn rule_to_name(rule: Rule) -> &'static str {
     rule.into()
 }
 
 /// Return the acronym of the rule:
 /// Rule::MissingDoubleAccents => MDA
-fn rule_to_code(rule: Rule) -> String {
+pub fn rule_to_code(rule: Rule) -> String {
     name_to_code(rule_to_name(rule))
 }
 
