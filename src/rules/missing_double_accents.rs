@@ -9,7 +9,7 @@ use crate::doc::Doc;
 use crate::registry::Rule;
 use crate::tokenizer::Token;
 use grac::add_acute_at;
-use grac::constants::{ALT_SYLLABIC, APOSTROPHES};
+use grac::constants::{APOSTROPHES, MULTIPLE_PRONUNCIATION};
 use grac::diacritic_pos;
 use grac::Diacritic;
 
@@ -31,19 +31,19 @@ pub const PRONOUNS: [&str; 15] = [
 /// From \" onward they come from testing against the wikidump,
 /// and, even if rare, they make sense to keep.
 #[rustfmt::skip]
-const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 12] = [
+const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 17] = [
     "...", "…", "«", "\"", "“",
-    // Testing
-    "[", "{", "*", "<", "#", "}", ":",
+    "[", "]", "{", "}", "(", ")", "*", "<", "#", ":",
+    "-", "~",
 ];
 
 /// Words that signify some separations that allows us to detect an error.
 #[rustfmt::skip]
-const STOKEN_SEPARATOR_WORDS: [&str; 13] = [
+const STOKEN_SEPARATOR_WORDS: [&str; 14] = [
     // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
     "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
     // Others
-    "με", "όταν", "θα", "μήπως",
+    "με", "όταν", "θα", "μήπως", "για",
 ];
 
 // https://el.wiktionary.org/wiki/το
@@ -60,11 +60,24 @@ const SE_TO_COMPOUNDS: [&str; 10] = [
     "στα",
 ];
 
+/// Extract the lemma of a word.
+///
+/// This allows us to fully use the syllabification logic of grac by
+/// being able to use the synizesis table against the lemma instead of
+/// the word (since the word itself may very well not be in the table).
+///
+/// Example: lemmatize("παλιοκατσάριαν") == "κατσάρια"
+#[inline(always)]
+fn lemmatize(s: &str) -> &str {
+    s.trim_end_matches('ν').trim_start_matches("παλιο")
+}
+
 /// Return true iif we need to fix the missing double accent
 ///
 /// Uses an option so we can gracefully exit when there is not a next token
 ///
-/// The proparoxytone test is the most expensive part, so we try to compute it last.
+/// The proparoxytone test is the most expensive part, so we compute it last,
+/// outside of this function.
 #[allow(clippy::similar_names)]
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // For an error to exist, the next token must be a pronoun
@@ -73,15 +86,13 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    if ALT_SYLLABIC.contains(&token.text)
+    if MULTIPLE_PRONUNCIATION.contains(&token.text)
         // We do not deal with diminutives at the moment.
         || token.text.ends_with("άκια")
         || token.text.ends_with("ούλια")
+        // See also `crate::rules::accents::multisyllable_not_accented_opt`
+        || token.text.contains(['[', ']'])
     {
-        return None;
-    }
-
-    if !is_proparoxytone_strict(token.text) {
         return None;
     }
 
@@ -124,7 +135,9 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
 }
 
 pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if missing_double_accents_opt(token, doc).is_some() {
+    if missing_double_accents_opt(token, doc).is_some()
+        && is_proparoxytone_strict(lemmatize(token.text))
+    {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingDoubleAccents,
             range: token.range_text(),
@@ -211,21 +224,30 @@ mod tests {
     test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
     test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
 
-    // Conjunctions
+    // STOKEN_SEPARATOR
+    // * Conjunctions
     test_mda!(conj1, "την πρόσβαση σας ή την", false);
     test_mda!(conj2, "το τηλέφωνο σας ενώ οδηγείτε,", false);
     test_mda!(conj3, "χτυπά τα θύματα της είτε αργά και", false);
     test_mda!(conj4, "Μετά την ανάσταση μου όμως θα σας", false);
     test_mda!(conj5, "θέση στο πολίτευμα μας αφού είναι το", false);
     test_mda!(conj6, "Στα ποιήματα του ωστόσο διαβάζουμε ότι", false);
+    // * Others
+    test_mda!(stok1, "αποβίβασε το στράτευμα του για να βοηθήσει", false);
 
     test_mda!(already_correct, "ανακαλύφθηκέ το.", true);
     test_mda!(no_proparoxytone, "καλός.", true);
     test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
-    test_mda!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
     test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
-    test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
     test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+
+    // Punctuation
+    test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
+    test_mda!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
+    test_mda!(inner_punct, "χτυπώ τα [[πόδι]]α μου στο", true);
+    test_mda!(punct1, "τα υπόλοιπα ρήματα σε -άω", true);
+    // Happens in dictionaries
+    test_mda!(punct2, "ένας μόνο ξέφυγε ολότελα την ~ ως", true);
 
     // Regression
     test_mda!(reg1, "Κάθε κίνηση που κάνετε μου κοστίζει ένα...", true);
