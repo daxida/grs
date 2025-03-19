@@ -2,14 +2,12 @@ use crate::diagnostic::Diagnostic;
 use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
+use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::Token;
 
 // Based on common expressions
-//
-// Should also add pronouns and not open this can of worms:
-// https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
 #[rustfmt::skip]
-const DUPLICATED_WORD_EXCEPTIONS: [&str; 38] = [
+const DUPLICATED_WORD_EXCEPTIONS: [&str; 32] = [
     "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα",
     "λίγο", "λίγα", "πολύ",
     "καλά",
@@ -24,14 +22,17 @@ const DUPLICATED_WORD_EXCEPTIONS: [&str; 38] = [
     "κούτσα",
     "άκρη",
     "λογής",
-    // Can of worms
-    "με", "μας", "μου", "του", "της", "τους",
 ];
 
 fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
     debug_assert!(!token.punct && token.greek);
 
-    if token.text.is_empty() || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text) {
+    if token.text.is_empty()
+        || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text)
+        // Should also add pronouns and not open this can of worms:
+        // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
+        || PRONOUNS_LOWERCASE.contains(&token.text)
+    {
         return None;
     }
 
@@ -82,4 +83,5 @@ mod tests {
     test_dw!(numbers1, "δυο δυο", true);
     test_dw!(numbers2, "τρία τρία", true);
     test_dw!(other1, "θα διαφθαρούν όλα πέρα πέρα", true);
+    test_dw!(pron1, "Λοιπόν το ένστικτό σου σου φώναξε", true);
 }

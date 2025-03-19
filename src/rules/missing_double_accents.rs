@@ -19,7 +19,7 @@ fn is_proparoxytone_strict(word: &str) -> bool {
 }
 
 // Contains only lowercase. They are not expected to be capitalized in our logic.
-pub const PRONOUNS: [&str; 15] = [
+pub const PRONOUNS_LOWERCASE: [&str; 15] = [
     "με", "σε", "τον", "την", "τη", "το", // Accusative Singular
     "μας", "σας", "τους", "τις", "τα", // Accusative Plural
     "μου", "σου", "του", "της", // Genitive Singular
@@ -82,7 +82,7 @@ fn lemmatize(s: &str) -> &str {
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
-    if ntoken.punct || !PRONOUNS.contains(&ntoken.text) {
+    if ntoken.punct || !PRONOUNS_LOWERCASE.contains(&ntoken.text) {
         return None;
     }
 
