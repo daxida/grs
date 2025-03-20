@@ -4,6 +4,7 @@ use crate::doc::{is_abbreviation_or_ends_with_dot, previous_token_is_num};
 use crate::registry::Rule;
 use crate::tokenizer::Token;
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
+use grac::with_capitalized;
 use grac::{ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, Diacritic};
 
 fn is_monosyllable_accented(token: &Token) -> bool {
@@ -23,7 +24,7 @@ fn is_monosyllable_accented(token: &Token) -> bool {
 //
 // Note that we don't include ποιόν, ποιού since they are ambiguous
 // and can come from the noun ποιόν.
-const EXTRA_MONOSYLLABLES: [&str; 16] = [
+const EXTRA_MONOSYLLABLES: [&str; 16] = with_capitalized!([
     "ποιός",
     "ποιό",
     "ποιοί",
@@ -32,16 +33,7 @@ const EXTRA_MONOSYLLABLES: [&str; 16] = [
     "ποιά",
     "ποιάς",
     "ποιές",
-    // Capitalized
-    "Ποιός",
-    "Ποιό",
-    "Ποιοί",
-    "Ποιών",
-    "Ποιούς",
-    "Ποιά",
-    "Ποιάς",
-    "Ποιές",
-];
+]);
 
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
@@ -94,16 +86,11 @@ const CORRECT_MULTISYLLABLE_NOT_ACCENTED: &[&str] = &[
 // ** Can appear on capitalized position.
 // https://el.wiktionary.org/wiki/προτακτικό
 #[rustfmt::skip]
-const PROSTAKTIKOI: &[&str] = &[
-    // Lowercase
+const PROSTAKTIKOI: [&str; 26] = with_capitalized!([
     "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
     "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
-    "σιορ",
-    // Uppercase
-    "Αγια", "Αγιο", "Αϊ", "Γερο", "Γρια", "Θεια",
-    "Κυρα", "Μαστρο", "Μπαρμπα", "Παπα", "Χατζη",
-    "Σιορ",
-];
+    "σιορ", "ψευτο",
+]);
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
@@ -253,4 +240,5 @@ mod tests {
     test_multi!(prostatiko2, "γερο-Ευθύμιο", true);
     test_multi!(prostatiko3, "παπα - Ευθύμιο", true);
     test_multi!(prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
+    test_multi!(prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
 }

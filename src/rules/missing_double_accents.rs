@@ -39,11 +39,11 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 17] = [
 
 /// Words that signify some separations that allows us to detect an error.
 #[rustfmt::skip]
-const STOKEN_SEPARATOR_WORDS: [&str; 14] = [
+const STOKEN_SEPARATOR_WORDS: [&str; 15] = [
     // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
     "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
     // Others
-    "με", "όταν", "θα", "μήπως", "για",
+    "με", "όταν", "θα", "μήπως", "λοιπόν", "για",
 ];
 
 // https://el.wiktionary.org/wiki/το
@@ -234,6 +234,7 @@ mod tests {
     test_mda!(conj6, "Στα ποιήματα του ωστόσο διαβάζουμε ότι", false);
     // * Others
     test_mda!(stok1, "αποβίβασε το στράτευμα του για να βοηθήσει", false);
+    test_mda!(stok2, "Το ένστικτο του λοιπόν του λέγει να σφάζει", false);
 
     test_mda!(already_correct, "ανακαλύφθηκέ το.", true);
     test_mda!(no_proparoxytone, "καλός.", true);
