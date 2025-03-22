@@ -54,6 +54,9 @@ fn check_raw(text: &str, config: Config) -> Vec<Diagnostic> {
     if config.contains(&Rule::AmbiguousChar) {
         ambiguous_char(text, &mut diagnostics);
     }
+    if config.contains(&Rule::ForbiddenChar) {
+        forbidden_char(text, &mut diagnostics);
+    }
     diagnostics
 }
 

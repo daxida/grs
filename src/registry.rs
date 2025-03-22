@@ -13,6 +13,7 @@ pub enum Rule {
     MultisyllableNotAccented,
     MixedScripts,
     AmbiguousChar,
+    ForbiddenChar,
 }
 
 impl Rule {
@@ -35,7 +36,10 @@ impl Rule {
     }
 
     pub const fn requires_tokenizing(&self) -> bool {
-        !matches!(self, Rule::OutdatedSpelling | Rule::AmbiguousChar)
+        !matches!(
+            self,
+            Rule::OutdatedSpelling | Rule::AmbiguousChar | Rule::ForbiddenChar
+        )
     }
 }
 

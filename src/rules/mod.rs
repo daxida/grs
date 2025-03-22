@@ -8,6 +8,7 @@ mod mixed_scripts;
 
 // Use raw text
 mod ambiguous_char;
+mod forbidden_char;
 mod outdated_spelling;
 
 pub use accents::{monosyllable_accented, multisyllable_not_accented};
@@ -18,4 +19,5 @@ pub use missing_double_accents::missing_double_accents;
 pub use mixed_scripts::mixed_scripts;
 
 pub use ambiguous_char::ambiguous_char;
+pub use forbidden_char::forbidden_char;
 pub use outdated_spelling::outdated_spelling;
