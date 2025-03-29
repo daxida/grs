@@ -7,9 +7,9 @@ use crate::tokenizer::Token;
 
 // Based on common expressions
 #[rustfmt::skip]
-const DUPLICATED_WORD_EXCEPTIONS: [&str; 32] = [
-    "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα",
-    "λίγο", "λίγα", "πολύ",
+const DUPLICATED_WORD_EXCEPTIONS: [&str; 37] = [
+    "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα", "πάνω", "κάτω",
+    "λίγο", "λίγα", "πολύ", "πάρα",
     "καλά",
     "πρώτα", "πρώτη", "πρώτον",
     "ίσως",
@@ -22,6 +22,8 @@ const DUPLICATED_WORD_EXCEPTIONS: [&str; 32] = [
     "κούτσα",
     "άκρη",
     "λογής",
+    "αγάλι",
+    "τσίμα",
 ];
 
 fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
@@ -83,5 +85,8 @@ mod tests {
     test_dw!(numbers1, "δυο δυο", true);
     test_dw!(numbers2, "τρία τρία", true);
     test_dw!(other1, "θα διαφθαρούν όλα πέρα πέρα", true);
+    test_dw!(other2, "είναι πάρα πάρα πολλά", true);
     test_dw!(pron1, "Λοιπόν το ένστικτό σου σου φώναξε", true);
+    test_dw!(expr1, "ο που αγάλι αγάλι περπατεί", true);
+    test_dw!(expr2, "στο κάτω κάτω της γραφής", true);
 }

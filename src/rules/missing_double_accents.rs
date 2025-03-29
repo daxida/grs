@@ -120,6 +120,10 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         || followed_by_elliptic_abbreviation(nntoken, doc)
     {
         return Some(());
+    // Case να. Ex. Άφησε τον να βρει μόνος του...
+    // The only two pronouns that introduce ambiguity are το & του
+    } else if nntoken.text == "να" && ntoken.text != "το" && ntoken.text != "του" {
+        return Some(());
     }
 
     // Testing
@@ -241,6 +245,12 @@ mod tests {
     test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
     test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
     test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+
+    // Before na
+    test_mda!(before_na1, "Άφησε τον να βρει μόνος του", false);
+    test_mda!(before_na2, "τάζοντας της να τη στεφανωθή,", false);
+    test_mda!(before_na3, "τερπνήν ενασχόλησιν το να ρίπτωσι λίθους", true);
+    test_mda!(before_na4, "πρόθεση του να παραιτηθεί", true);
 
     // Punctuation
     test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
