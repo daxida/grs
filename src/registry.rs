@@ -13,6 +13,7 @@ pub enum Rule {
     MultisyllableNotAccented,
     MixedScripts,
     AmbiguousChar,
+    ForbiddenAccent,
     ForbiddenChar,
 }
 
