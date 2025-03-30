@@ -34,7 +34,7 @@ pub fn is_abbreviation_or_ends_with_dot(token: &Token, doc: &Doc) -> bool {
 
 pub fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
     doc.get(token.index.saturating_sub(1))
-        .map_or(false, |ptoken| {
+        .is_some_and(|ptoken| {
             ptoken.punct
                 && ptoken.whitespace.is_empty()
                 && ptoken.text.chars().all(|c| c.is_ascii_digit())

@@ -23,7 +23,7 @@ fn remove_last_char(s: &str) -> &str {
 }
 
 fn starts_with_vowel_or_plosive(token: &Token) -> bool {
-    token.text.chars().next().map_or(false, |ch| {
+    token.text.chars().next().is_some_and(|ch| {
         PLOSIVE_CLUSTERS
             .iter()
             .any(|&prefix| token.text.starts_with(prefix))

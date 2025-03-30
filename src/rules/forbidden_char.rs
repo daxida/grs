@@ -4,7 +4,7 @@ use crate::registry::Rule;
 use grac::is_greek_letter;
 
 // Check if the char after ς is allowed.
-fn wrong_after_sigma(c: char) -> bool {
+const fn wrong_after_sigma(c: char) -> bool {
     // For testing against the wiki dumps, uncomment this line.
     // c != 'Ο' && c != 'Γ' && c != 'ς' &&
     is_greek_letter(c)

@@ -39,7 +39,7 @@ impl Rule {
     pub const fn requires_tokenizing(&self) -> bool {
         !matches!(
             self,
-            Rule::OutdatedSpelling | Rule::AmbiguousChar | Rule::ForbiddenChar
+            Self::OutdatedSpelling | Self::AmbiguousChar | Self::ForbiddenChar
         )
     }
 }
