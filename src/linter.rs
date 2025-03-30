@@ -63,6 +63,46 @@ fn check_raw(text: &str, config: Config) -> Vec<Diagnostic> {
     diagnostics
 }
 
+#[allow(dead_code)]
+fn dbg_tokenize(doc: &Doc) {
+    let separator = "================";
+    println!("{separator}");
+    println!("Tokenize diagnostics");
+
+    let width = 25;
+
+    println!("{:width$}{}", "Number of tokens: ", doc.len());
+    let mut cnt: HashMap<&str, usize> = HashMap::new();
+    for token in doc {
+        *cnt.entry("total").or_insert(0) += 1;
+        *cnt.entry("greek").or_insert(0) += usize::from(token.greek);
+        *cnt.entry("punct").or_insert(0) += usize::from(token.punct);
+        *cnt.entry("length_sum").or_insert(0) += token.text.len();
+        *cnt.entry("whitespaces").or_insert(0) += usize::from(!token.whitespace.is_empty());
+    }
+
+    if let Some(total) = cnt.get("total") {
+        let avg_length = *cnt.get("length_sum").unwrap_or(&0) as f64 / *total as f64;
+        println!("{:width$}{:.2}", "Average token length: ", avg_length);
+    }
+    println!(
+        "{:width$}{}",
+        "Greek tokens: ",
+        cnt.get("greek").unwrap_or(&0)
+    );
+    println!(
+        "{:width$}{}",
+        "Punctuation tokens: ",
+        cnt.get("punct").unwrap_or(&0)
+    );
+    println!(
+        "{:width$}{}",
+        "Non empty whitespaces: ",
+        cnt.get("whitespaces").unwrap_or(&0)
+    );
+    println!("{separator}");
+}
+
 pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
     let mut diagnostics = vec![];
 
@@ -74,7 +114,10 @@ pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
         return diagnostics;
     }
 
+    let now = std::time::Instant::now();
     let doc = tokenize(text);
+    println!("Tokenize took: {:?}", now.elapsed());
+    // dbg_tokenize(&doc);
 
     for token in doc.iter().filter(|token| !token.punct) {
         // TODO: A better tokenizer require locator > no but do it for printing lines
