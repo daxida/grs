@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Color Customizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        width: 120px;
+        padding: 10px;
+      }
+
+      .text {
+        text-align: center;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .title {
+        font-weight: bold;
+        font-size: 1.2em;
+        color: #333;
+        margin-bottom: 5px;
+        display: block;
+        padding: 2px;
+      }
+
+      #color-picker {
+        display: block;
+        margin: 0 auto;
+        width: 90%;
+      }
+
+      .action-btn {
+        display: block;
+        margin: 8px auto 0;
+        width: 90%;
+        padding: 5px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .rules {
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        gap: 5px;
+      }
+
+      .rule-btn {
+        width: 40%;
+        background-color: #4CAF50; /* Green when active */
+        color: white;
+        text-align: center;
+        border: none;
+        padding: 3px;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+
+      .rule-btn:hover {
+        background-color: #45a049; /* Slightly darker green on hover */
+      }
+
+      .rule-btn.inactive {
+        background-color: #b22222; /* Dark Red when inactive */
+        color: #fff;
+        opacity: 0.8;
+      }
+
+      .rule-btn.inactive:hover {
+        background-color: #8b1a1a; /* Darker Red on hover */
+      }
+    </style>
+  </head>
+  <body>
+    <span class="title">Settings</span>
+    <input type="color" id="color-picker" name="color-picker" value="#ff0000">
+    <button id="to-monotonic-btn" class="action-btn">To Monotonic</button>
+    <button id="fix-btn" class="action-btn">Fix</button>
+
+    <div class="rules">
+      <span class="title">Rules</span>
+      <button id="ac-toggle" class="rule-btn" data-rule="AC">AC</button>
+      <button id="afn-toggle" class="rule-btn" data-rule="AFN">AFN</button>
+      <button id="dw-toggle" class="rule-btn" data-rule="DW">DW</button>
+      <button id="ma-toggle" class="rule-btn" data-rule="MA">MA</button>
+      <button id="mac-toggle" class="rule-btn" data-rule="MAC">MAC</button>
+      <button id="mda-toggle" class="rule-btn" data-rule="MDA">MDA</button>
+      <button id="mna-toggle" class="rule-btn" data-rule="MNA">MNA</button>
+      <button id="ms-toggle" class="rule-btn" data-rule="MS">MS</button>
+      <button id="os-toggle" class="rule-btn" data-rule="OS">OS</button>
+      <button id="rfn-toggle" class="rule-btn" data-rule="RFN">RFN</button>
+    </div>
+
+    <script src="js/popup.js"></script>
+  </body>
+</html>

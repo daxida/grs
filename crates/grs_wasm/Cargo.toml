@@ -1,0 +1,19 @@
+[package]
+name = "grs_wasm"
+version = "0.1.0"
+edition = { workspace = true }
+rust-version = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+description = "WebAssembly bindings for grs"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+grac = { workspace = true }
+grs = { workspace = true, features = ["serde"] }
+serde = { workspace = true }
+serde-wasm-bindgen = { workspace = true }
+wasm-bindgen = { workspace = true }
+web-sys = { workspace = true, features = ["console"] }

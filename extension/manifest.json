@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "Chrome Wasm Extension",
+  "short_name": "Chrome Wasm Extension",
+  "description": "",
+  "version": "1.0.1",
+  "author": "Berrigan",
+  "minimum_chrome_version": "110",
+  "offline_enabled": true,
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "permissions": [
+    "tabs",
+    "alarms",
+    "scripting",
+
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*/*",
+    "file:///*/*"
+  ],
+  "content_scripts": [
+    {
+      "run_at": "document_end",
+      "all_frames": false,
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "js/content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "resources": [
+        "pkg/*"
+      ]
+    }
+  ]
+}
