@@ -20,6 +20,7 @@ strum = { workspace = true }
 strum_macros = { workspace = true }
 unicode-normalization = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
+aho-corasick = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }

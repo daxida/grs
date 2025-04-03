@@ -1,7 +1,11 @@
 use strum::IntoEnumIterator;
 use strum_macros::{EnumIter, IntoStaticStr};
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[derive(EnumIter, IntoStaticStr, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Rule {
     MissingDoubleAccents,
     MissingAccentCapital,

@@ -15,5 +15,6 @@ grac = { workspace = true }
 grs = { workspace = true, features = ["serde"] }
 serde = { workspace = true }
 serde-wasm-bindgen = { workspace = true }
+strum = { workspace = true }
 wasm-bindgen = { workspace = true }
 web-sys = { workspace = true, features = ["console"] }

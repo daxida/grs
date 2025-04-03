@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.34"
+version = "4.5.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e958897981290da2a852763fe9cdb89cd36977a5d729023127095fa94d95e2ff"
+checksum = "d8aa86934b44c19c50f87cc2790e19f54f7a67aedb64101c2e1a2e5ecfb73944"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -130,9 +130,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.34"
+version = "4.5.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83b0f35019843db2160b5bb19ae09b4e6411ac33fc6a712003c33e03090e2489"
+checksum = "2414dbb2dd0695280da6ea9261e327479e9d37b0630f6b53ba2a11c60c679fd9"
 dependencies = [
  "anstream",
  "anstyle",
@@ -249,7 +249,7 @@ checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 [[package]]
 name = "grac"
 version = "0.1.0"
-source = "git+https://github.com/daxida/grac#d7e1b5db7e304bf0a8282906b1cf38a546e00c09"
+source = "git+https://github.com/daxida/grac#e788109661ce14cdc84d533af01c4fa1fe088c3f"
 dependencies = [
  "aho-corasick",
  "phf",
@@ -260,6 +260,7 @@ dependencies = [
 name = "grs"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "clap",
  "colored",
  "criterion",
@@ -280,6 +281,7 @@ dependencies = [
  "grs",
  "serde",
  "serde-wasm-bindgen",
+ "strum",
  "wasm-bindgen",
  "web-sys",
 ]

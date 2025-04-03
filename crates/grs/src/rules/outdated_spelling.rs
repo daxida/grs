@@ -1,6 +1,10 @@
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::range::TextRange;
 use crate::registry::Rule;
+use aho_corasick::AhoCorasick;
+use std::sync::OnceLock;
+
+static AC: OnceLock<AhoCorasick> = OnceLock::new();
 
 const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
     // Superfluous diaereses
@@ -31,16 +35,23 @@ const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
 /// Outdated spelling of strings.
 //
 // Some caveats:
-// - If this becomes too slow, consider using aho-corasick
 // - Without regex or some more logic, this is agnostic of word boundaries
 //   and could replace chunks inside words. This is fine (for now).
 // - The const table needs manual adding of uppercase variants since the
 //   prize of casting .to_lowercase() is too harsh, and I have not figured out
 //   how to build a const array with capitalized variants at compile time.
 pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
-    for (target, destination) in OUTDATED_SPELLINGS_MULTIPLE {
-        if let Some((start, _)) = text.match_indices(target).next() {
-            let range = TextRange::new(start, start + target.len());
+    let ac = AC.get_or_init(|| {
+        AhoCorasick::new(OUTDATED_SPELLINGS_MULTIPLE.iter().map(|(s, _)| *s)).unwrap()
+    });
+
+    for mat in ac.find_iter(text) {
+        let target = &text[mat.start()..mat.end()];
+        if let Some(&(_, destination)) = OUTDATED_SPELLINGS_MULTIPLE
+            .iter()
+            .find(|&&(k, _)| k == target)
+        {
+            let range = TextRange::new(mat.start(), mat.end());
             diagnostics.push(Diagnostic {
                 kind: Rule::OutdatedSpelling,
                 range,
@@ -56,20 +67,16 @@ pub fn outdated_spelling(text: &str, diagnostics: &mut Vec<Diagnostic>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_rule_no_token;
 
-    #[test]
-    fn test_basic() {
-        let text = "γάιδαρος αρσενικό (θηλυκό γαϊδάρα ή γαϊδούρα)";
-        let mut diagnostics = Vec::new();
-        outdated_spelling(text, &mut diagnostics);
-        assert!(diagnostics.is_empty());
-
-        diagnostics.clear();
-        outdated_spelling("κακόϋπνος", &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-
-        diagnostics.clear();
-        outdated_spelling("Έϊμι Γουάντζ", &mut diagnostics);
-        assert!(!diagnostics.is_empty());
+    macro_rules! test_os {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test_rule_no_token!($name, outdated_spelling, $text, $expected);
+        };
     }
+
+    test_os!(os_ok, "(θηλυκό γαϊδάρα ή γαϊδούρα)", true);
+    test_os!(os_nok1, "κακόϋπνος", false);
+    test_os!(os_nok2, "Έϊμι Γουάντζ", false);
+    test_os!(os_nok3, "Πάσχα Ρωμέϊκο", false);
 }

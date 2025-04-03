@@ -153,7 +153,7 @@ pub fn tokenize(text: &str) -> Doc {
     tokens
 }
 
-/// A simple macro for testing a rule.
+/// Macro to test a rule that requires tokenizing.
 #[macro_export]
 macro_rules! test_rule {
     ($name:ident, $rule_fn:expr, $text:expr, $expected:expr) => {
@@ -165,6 +165,20 @@ macro_rules! test_rule {
             for token in &doc {
                 $rule_fn(&token, &doc, &mut diagnostics);
             }
+            assert_eq!(diagnostics.is_empty(), $expected, "(text: {text})");
+        }
+    };
+}
+
+/// Macro to test a rule that DOES NOT require tokenizing.
+#[macro_export]
+macro_rules! test_rule_no_token {
+    ($name:ident, $rule_fn:expr, $text:expr, $expected:expr) => {
+        #[test]
+        fn $name() {
+            let text = $text;
+            let mut diagnostics = Vec::new();
+            $rule_fn(&text, &mut diagnostics);
             assert_eq!(diagnostics.is_empty(), $expected, "(text: {text})");
         }
     };

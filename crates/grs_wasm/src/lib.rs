@@ -1,8 +1,9 @@
 use grs::diagnostic::{Diagnostic, Fix};
-use grs::registry::{code_to_rule, Rule};
+use grs::registry::{code_to_rule, rule_to_code, Rule};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
+use strum::IntoEnumIterator;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use web_sys::js_sys::Error;
@@ -106,42 +107,38 @@ impl DiagnosticJs {
     }
 }
 
-const ALL_RULES: [Rule; 10] = [
-    Rule::MissingDoubleAccents,
-    Rule::MissingAccentCapital,
-    Rule::DuplicatedWord,
-    Rule::AddFinalN,
-    Rule::RemoveFinalN,
-    Rule::OutdatedSpelling,
-    Rule::MonosyllableAccented,
-    Rule::MultisyllableNotAccented,
-    Rule::MixedScripts,
-    Rule::AmbiguousChar,
-];
-
 // Proxy of Config (i.e. Vec<Rule>) to be passed between rust and js.
 #[derive(Serialize, Deserialize)]
 struct Options {
     rules: Vec<String>,
 }
 
+fn all_rules() -> Vec<Rule> {
+    Rule::iter().collect()
+}
+
 fn load_config(options: JsValue) -> Vec<Rule> {
     if options.is_null() || options.is_undefined() {
-        ALL_RULES.to_vec()
+        all_rules()
     } else {
         // options is expected to be: { "MDA": true, "AC": true, ... }
         let options_map: HashMap<String, bool> =
             serde_wasm_bindgen::from_value(options).unwrap_or_default();
 
-        // Extract keys where value is true
-        let codes: Vec<String> = options_map
+        options_map
             .into_iter()
+            // Select keys where the value is true
             .filter_map(|(key, value)| if value { Some(key) } else { None })
-            .collect();
-
-        // Ignore keys that do not match any rule
-        codes.iter().filter_map(|code| code_to_rule(code)).collect()
+            // Ignore keys that do not match any rule
+            .filter_map(|code| code_to_rule(&code))
+            .collect()
     }
+}
+
+#[wasm_bindgen]
+pub fn rule_codes() -> Result<JsValue, Error> {
+    let all_codes: Vec<_> = all_rules().iter().map(|rule| rule_to_code(*rule)).collect();
+    serde_wasm_bindgen::to_value(&all_codes).map_err(into_error)
 }
 
 // Reference:
@@ -149,7 +146,7 @@ fn load_config(options: JsValue) -> Vec<Rule> {
 #[wasm_bindgen]
 pub fn scan_text(text: &str, options: JsValue) -> Result<JsValue, Error> {
     let config = load_config(options);
-    let diagnostics_js = grs::linter::check(text, &config.as_slice())
+    let diagnostics_js = grs::linter::check(text, config.as_slice())
         .iter()
         .map(|diagnostic| DiagnosticJs::new(text, diagnostic))
         .collect::<Vec<_>>();
