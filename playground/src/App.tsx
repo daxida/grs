@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo } from 'react'
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 import init from './../pkg/grs_wasm.js'
+import { rule_codes } from './../pkg/grs_wasm.js'
 import Header from "./Header";
 import { DEFAULT_PROMPT } from './constants.js';
 import { useTheme } from './theme.js';
@@ -74,27 +75,13 @@ export default function App() {
   );
 }
 
-const ALL_RULES = [
-  "MDA", // MissingDoubleAccents
-  "MAC", // MissingAccentCapital
-  "DW",  // DuplicatedWord
-  "AFN", // AddFinalN
-  "RFN", // RemoveFinalN
-  "OS",  // OutdatedSpelling
-  "MA",  // MonosyllableAccented
-  "MNA", // MultisyllableNotAccented
-  "MS",  // MixedScripts
-  "AC",  // AmbiguousChar
-  "USELESS",  // AmbiguousChar
-  "FA",  // AmbiguousChar
-];
-const defaultSettings = Object.fromEntries(ALL_RULES.map(rule => [rule, true]));
-
 async function startApp(): Promise<{
   text: string;
   settings: string;
 }> {
   await init(); // Init wasm
+  const codes: Array<string> = rule_codes();
+  const defaultSettings = Object.fromEntries(codes.map(rule => [rule, true]));
   return {
     text: DEFAULT_PROMPT,
     settings: JSON.stringify(defaultSettings, null, 2),
