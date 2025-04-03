@@ -5,10 +5,10 @@ use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::Token;
 use grac::conc;
-use grac::{has_diacritic, is_greek_char, syllabify_el_mode, Diacritic, Merge};
+use grac::{Diacritic, Merge, has_diacritic, is_greek_char, syllabify_el_mode};
 
 // https://el.wiktionary.org/wiki/τίς
-const TIS_VARIANTS: [&str; 12] = [
+const TIS_VARIANTS: [&str; 13] = [
     "τις",
     "τινος",
     "τινι",
@@ -18,17 +18,26 @@ const TIS_VARIANTS: [&str; 12] = [
     "τινες",
     "τινων",
     "τισι",
+    "τισιν",
     "τινας",
     "τινε",
-    "τονοιν",
+    "τινοιν",
 ];
 
 // https://en.wiktionary.org/wiki/εἰμί#Ancient_Greek
 #[rustfmt::skip]
-const ANCIENT_EINAI: [&str; 12] = [
-    "εἰμι", "ἐστι", "ἐστιν", "εἰσι", "εἰσιν", "ἐσμεν",
-    // And their un-spirited counterparts
-    "ειμι", "εστι", "εστιν", "εισι", "εισιν", "εσμεν"
+const ANCIENT_EINAI: [&str; 14] = [
+    "εἰμι", "ἐστι", "ἐστιν", "εἰσι", "εἰσιν", "ἐσμεν", "ἐστε",
+    // And their monotonic counterparts
+    "ειμι", "εστι", "εστιν", "εισι", "εισιν", "εσμεν", "εστε",
+];
+
+// https://en.wiktionary.org/wiki/φημί#Ancient_Greek
+// * φατε may conflict with φάω
+#[rustfmt::skip]
+const ANCIENT_LEO: [&str; 7] = [
+    // And their monotonic counterparts
+    "φημι", "φασι", "φασιν", "φησι", "φησιν", "φαμεν", "φατε",
 ];
 
 const PRONOUN_EXPANDED: [&str; 3] = ["τηνε", "τονε", "τωνε"];
@@ -37,9 +46,10 @@ const OTHER_EXTENSIONS: [&str; 3] = ["ποτε", "που", "γε"];
 // Also used in accents.rs as an exception list.
 // We share this list even though in accents.rs we only look for
 // multisyllables (so checking for τι, of the TIS_VARIANTS, is a waste)
-pub const CORRECT_MULTISYLLABLE_NOT_ACCENTED: [&str; 30] = conc!(
+pub const CORRECT_MULTISYLLABLE_NOT_ACCENTED: [&str; 40] = conc!(
     TIS_VARIANTS,
     ANCIENT_EINAI,
+    ANCIENT_LEO,
     PRONOUN_EXPANDED,
     OTHER_EXTENSIONS
 );
@@ -54,7 +64,7 @@ const PRONOUN_VARIANTS: [&str; 7] = [
 
 // Maybe this could be added in missing_double_accents.
 // The extension is intended to cover old greek.
-const ALLOWED_WORDS_AFTER_DOUBLE_ACCENT: [&str; 52] = conc!(
+const ALLOWED_WORDS_AFTER_DOUBLE_ACCENT: [&str; 62] = conc!(
     PRONOUNS_LOWERCASE,
     CORRECT_MULTISYLLABLE_NOT_ACCENTED,
     PRONOUN_VARIANTS

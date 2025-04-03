@@ -1,12 +1,12 @@
 use crate::diagnostic::{Diagnostic, Fix};
+use crate::doc::{Doc, previous_token_is_apostrophe};
 use crate::doc::{is_abbreviation_or_ends_with_dot, previous_token_is_num};
-use crate::doc::{previous_token_is_apostrophe, Doc};
 use crate::registry::Rule;
 use crate::rules::forbidden_accent::CORRECT_MULTISYLLABLE_NOT_ACCENTED;
 use crate::tokenizer::Token;
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
 use grac::with_capitalized;
-use grac::{ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at, Diacritic};
+use grac::{Diacritic, ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at};
 
 fn is_monosyllable_accented(token: &Token) -> bool {
     // Fast discard if possible
@@ -78,10 +78,10 @@ fn is_multisyllable_not_accented(token: &Token) -> bool {
 // ** Can appear on capitalized position.
 // https://el.wiktionary.org/wiki/προτακτικό
 #[rustfmt::skip]
-const PROSTAKTIKOI: [&str; 26] = with_capitalized!([
+const PROSTAKTIKOI: [&str; 24] = with_capitalized!([
     "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
     "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
-    "σιορ", "ψευτο",
+    "ψευτο",
 ]);
 
 const fn is_dash(ch: char) -> bool {
@@ -115,6 +115,8 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
             if let Some(npunct_first_char) = ntoken.text.chars().next() {
                 if APOSTROPHES.contains(&npunct_first_char)
                     || (PROSTAKTIKOI.contains(&token.text) && is_dash(npunct_first_char))
+                // Maybe just ignoring all dashes makes more sense
+                // || is_dash(npunct_first_char)
                 {
                     return None;
                 }
@@ -235,12 +237,19 @@ mod tests {
     test_multi!(multi_final_period, "απεβ. το 330 π.Χ.", true);
     test_multi!(multi_ellipsis, "αλλω… τι;", true);
     test_multi!(multi_number, "ο 39χρονος αγνοούμενος", true);
-    test_multi!(multi_number_greek, "τομ. ΙΑ΄, σελ.", true);
+    // This includes wrong APOSTROPHE variations
+    test_multi!(multi_number_greek1, "τομ. ΙΑ΄, σελ.", true);
+    test_multi!(multi_number_greek2, "ΙΑ'. Θεσσαλονίκη", true);
+    test_multi!(multi_number_greek3, "(Κατά Λουκάν ιη´)", true);
+    test_multi!(multi_number_greek4, " οη΄.", true);
     test_multi!(multi_pio1, "και έκυψε να πιη ύδωρ", true);
     test_multi!(multi_pio2, "Άμα πιης τσάι", true);
 
-    // old einai - cf. forbidden_accent
+    // Ancient non accented words
     test_multi!(multi_einai, "Κύριός εστιν", true);
+    test_multi!(multi_tis, "ἐπὶ δυοῖν τινοιν διαφοραῖν", true);
+    test_multi!(multi_leo1, "ξύλου μόλιβδόν φασιν", true);
+    test_multi!(multi_leo2, "σώματά φασι", true);
 
     // Prostaktikoi
     test_multi!(prostatiko1, "γερο - Ευθύμιο", true);
