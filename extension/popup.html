@@ -42,12 +42,13 @@
       .rules {
         display: flex;
         flex-direction: column;
-        align-items: start;
+        align-items: right;
         gap: 5px;
       }
 
       .rule-btn {
-        width: 40%;
+        min-width: 50px;
+        width: 50%;
         background-color: #4CAF50; /* Green when active */
         color: white;
         text-align: center;
@@ -71,6 +72,12 @@
       .rule-btn.inactive:hover {
         background-color: #8b1a1a; /* Darker Red on hover */
       }
+
+      .counter-cell {
+        min-width: 40px;
+        text-align: right;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -79,19 +86,8 @@
     <button id="to-monotonic-btn" class="action-btn">To Monotonic</button>
     <button id="fix-btn" class="action-btn">Fix</button>
 
-    <div class="rules">
-      <span class="title">Rules</span>
-      <button id="ac-toggle" class="rule-btn" data-rule="AC">AC</button>
-      <button id="afn-toggle" class="rule-btn" data-rule="AFN">AFN</button>
-      <button id="dw-toggle" class="rule-btn" data-rule="DW">DW</button>
-      <button id="ma-toggle" class="rule-btn" data-rule="MA">MA</button>
-      <button id="mac-toggle" class="rule-btn" data-rule="MAC">MAC</button>
-      <button id="mda-toggle" class="rule-btn" data-rule="MDA">MDA</button>
-      <button id="mna-toggle" class="rule-btn" data-rule="MNA">MNA</button>
-      <button id="ms-toggle" class="rule-btn" data-rule="MS">MS</button>
-      <button id="os-toggle" class="rule-btn" data-rule="OS">OS</button>
-      <button id="rfn-toggle" class="rule-btn" data-rule="RFN">RFN</button>
-    </div>
+    <div class="rules"></div>
+    <button id="flip-all-rules-btn" class="action-btn">Disable All</button>
 
     <script src="js/popup.js"></script>
   </body>
