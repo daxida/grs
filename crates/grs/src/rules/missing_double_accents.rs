@@ -18,7 +18,7 @@ fn is_proparoxytone_strict(word: &str) -> bool {
     diacritic_pos(word, Diacritic::ACUTE) == [3]
 }
 
-// Contains only lowercase. They are not expected to be capitalized in our logic.
+/// Does not include των or archaic versions like τας.
 pub const PRONOUNS_LOWERCASE: [&str; 15] = [
     "με", "σε", "τον", "την", "τη", "το", // Accusative Singular
     "μας", "σας", "τους", "τις", "τα", // Accusative Plural
@@ -80,6 +80,12 @@ fn lemmatize(s: &str) -> &str {
 /// outside of this function.
 #[allow(clippy::similar_names)]
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
+    // Discarded ideas:
+    //
+    // * σε + τον (or other acc. pronouns)
+    // Ex.  σπρώχνοντας τον σε μια καρέγλα κοντά του.
+    // CEx. χτύπησε τον σε σύγχυση εχθρό...
+
     // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
     if ntoken.punct || !PRONOUNS_LOWERCASE.contains(&ntoken.text) {

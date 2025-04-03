@@ -1,7 +1,8 @@
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
 use crate::doc::{is_abbreviation_or_ends_with_dot, previous_token_is_num};
+use crate::doc::{previous_token_is_apostrophe, Doc};
 use crate::registry::Rule;
+use crate::rules::forbidden_accent::CORRECT_MULTISYLLABLE_NOT_ACCENTED;
 use crate::tokenizer::Token;
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
 use grac::with_capitalized;
@@ -40,6 +41,7 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
         || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text)
         || is_abbreviation_or_ends_with_dot(token, doc)
         || previous_token_is_num(token, doc)
+        || previous_token_is_apostrophe(token, doc)
     {
         return None;
     }
@@ -73,16 +75,6 @@ fn is_multisyllable_not_accented(token: &Token) -> bool {
     ) && token.syllables().len() > 1
 }
 
-// ** Can NOT appear on capitalized position, so no uppercase.
-#[rustfmt::skip]
-const CORRECT_MULTISYLLABLE_NOT_ACCENTED: &[&str] = &[
-    "ποτε",
-    // https://el.wiktionary.org/wiki/τινά
-    "τινες", "τινα", "τινε", "τινος", "τινων", "τινοιν", "τινι", "τισι", "τινας",
-    "τονε", "τηνε",
-    // ** These can appear on capitalized position
-];
-
 // ** Can appear on capitalized position.
 // https://el.wiktionary.org/wiki/προτακτικό
 #[rustfmt::skip]
@@ -91,6 +83,10 @@ const PROSTAKTIKOI: [&str; 26] = with_capitalized!([
     "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
     "σιορ", "ψευτο",
 ]);
+
+const fn is_dash(ch: char) -> bool {
+    matches!(ch, '–' | '-')
+}
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if !token.greek
@@ -117,10 +113,9 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if let Some(ntoken) = doc.get(token.index + 1) {
         if ntoken.punct {
             if let Some(npunct_first_char) = ntoken.text.chars().next() {
-                if APOSTROPHES.contains(&npunct_first_char) {
-                    return None;
-                }
-                if PROSTAKTIKOI.contains(&token.text) && npunct_first_char == '-' {
+                if APOSTROPHES.contains(&npunct_first_char)
+                    || (PROSTAKTIKOI.contains(&token.text) && is_dash(npunct_first_char))
+                {
                     return None;
                 }
             }
@@ -203,8 +198,13 @@ mod tests {
     test_mono!(mono_ellipsis3, "μέλ… και άλλα.", true);
     test_mono!(mono_old_numbers, "είς των βοσκών", true);
     test_mono!(mono_abbreviation, "ἄρ᾽ Ἀθήνας", true);
+
     // After numbers, with and without accent should be accepted
     test_mono!(mono_number, "του 20ού αιώνα", true);
+
+    // After apostrophe, it can be anything
+    test_mono!(mono_apostrophe_start, "Ξέρω ’γώ;", true);
+    // test_mono!(mono_apostrophe_inside, "Tι βλέπ'ς;", true); // Unsupported
 
     // Ποιος
     test_mono!(mono_poios1, "Μα ποιός ή ποιά έγραψε το λήμμα;", false);
@@ -230,10 +230,17 @@ mod tests {
     test_multi!(multi_apostrophe4, "να ’λεγε", true);
     test_multi!(multi_capital_comma, "Ο,ΤΙ ΝΑ 'ΝΑΙ", true);
     test_multi!(multi_final_n, "μιαν ανήσυχη ματιά", true);
-    test_multi!(multi_synizesis, "δια", true);
+    test_multi!(multi_synizesis1, "δια", true);
+    test_multi!(multi_synizesis2, "αυτή μες στο βιο της", true);
     test_multi!(multi_final_period, "απεβ. το 330 π.Χ.", true);
     test_multi!(multi_ellipsis, "αλλω… τι;", true);
     test_multi!(multi_number, "ο 39χρονος αγνοούμενος", true);
+    test_multi!(multi_number_greek, "τομ. ΙΑ΄, σελ.", true);
+    test_multi!(multi_pio1, "και έκυψε να πιη ύδωρ", true);
+    test_multi!(multi_pio2, "Άμα πιης τσάι", true);
+
+    // old einai - cf. forbidden_accent
+    test_multi!(multi_einai, "Κύριός εστιν", true);
 
     // Prostaktikoi
     test_multi!(prostatiko1, "γερο - Ευθύμιο", true);
@@ -241,4 +248,5 @@ mod tests {
     test_multi!(prostatiko3, "παπα - Ευθύμιο", true);
     test_multi!(prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
     test_multi!(prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
+    test_multi!(prostatiko6_dash, "τον μπαρμπα – Δημητρό", true);
 }

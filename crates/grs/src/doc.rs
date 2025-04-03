@@ -32,13 +32,31 @@ pub fn is_abbreviation_or_ends_with_dot(token: &Token, doc: &Doc) -> bool {
     false
 }
 
+#[inline(always)]
+const fn is_adjacent_punct(token: &Token) -> bool {
+    token.punct && token.whitespace.is_empty()
+}
+
+#[inline(always)]
+fn is_num(token: &Token) -> bool {
+    is_adjacent_punct(token) && token.text.chars().all(|c| c.is_ascii_digit())
+}
+
 pub fn previous_token_is_num(token: &Token, doc: &Doc) -> bool {
+    doc.get(token.index.saturating_sub(1)).is_some_and(is_num)
+}
+
+fn is_apostrophe(token: &Token) -> bool {
+    is_adjacent_punct(token)
+        && match token.text.chars().next() {
+            Some(first_char) => APOSTROPHES.contains(&first_char),
+            None => false,
+        }
+}
+
+pub fn previous_token_is_apostrophe(token: &Token, doc: &Doc) -> bool {
     doc.get(token.index.saturating_sub(1))
-        .is_some_and(|ptoken| {
-            ptoken.punct
-                && ptoken.whitespace.is_empty()
-                && ptoken.text.chars().all(|c| c.is_ascii_digit())
-        })
+        .is_some_and(is_apostrophe)
 }
 
 /// Returns `true` if this `token` (or some combination of tokens starting

@@ -4,7 +4,61 @@ use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::Token;
+use grac::conc;
 use grac::{has_diacritic, is_greek_char, syllabify_el_mode, Diacritic, Merge};
+
+// https://el.wiktionary.org/wiki/τίς
+const TIS_VARIANTS: [&str; 12] = [
+    "τις",
+    "τινος",
+    "τινι",
+    "τινα",
+    "τι",
+    "τω",
+    "τινες",
+    "τινων",
+    "τισι",
+    "τινας",
+    "τινε",
+    "τονοιν",
+];
+
+// https://en.wiktionary.org/wiki/εἰμί#Ancient_Greek
+#[rustfmt::skip]
+const ANCIENT_EINAI: [&str; 12] = [
+    "εἰμι", "ἐστι", "ἐστιν", "εἰσι", "εἰσιν", "ἐσμεν",
+    // And their un-spirited counterparts
+    "ειμι", "εστι", "εστιν", "εισι", "εισιν", "εσμεν"
+];
+
+const PRONOUN_EXPANDED: [&str; 3] = ["τηνε", "τονε", "τωνε"];
+const OTHER_EXTENSIONS: [&str; 3] = ["ποτε", "που", "γε"];
+
+// Also used in accents.rs as an exception list.
+// We share this list even though in accents.rs we only look for
+// multisyllables (so checking for τι, of the TIS_VARIANTS, is a waste)
+pub const CORRECT_MULTISYLLABLE_NOT_ACCENTED: [&str; 30] = conc!(
+    TIS_VARIANTS,
+    ANCIENT_EINAI,
+    PRONOUN_EXPANDED,
+    OTHER_EXTENSIONS
+);
+
+#[rustfmt::skip]
+const PRONOUN_VARIANTS: [&str; 7] = [
+    // Ancient pronouns
+    "των", "τας", "τε", "μοι", "σοι",
+    // Abbreviations: καπετάνισσά μ᾿
+    "μ", "τ",
+];
+
+// Maybe this could be added in missing_double_accents.
+// The extension is intended to cover old greek.
+const ALLOWED_WORDS_AFTER_DOUBLE_ACCENT: [&str; 52] = conc!(
+    PRONOUNS_LOWERCASE,
+    CORRECT_MULTISYLLABLE_NOT_ACCENTED,
+    PRONOUN_VARIANTS
+);
 
 // Check for two type of errors:
 // 1. words with accents before the antepenult.
@@ -49,19 +103,24 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
 
     // double accents with no pronoun
     if pos.len() > 1 {
-        // TODO: What about punct...?
-        let ntoken = doc.get(token.index + 1)?;
-        let res = !PRONOUNS_LOWERCASE.contains(&ntoken.text);
-        // if res {
-        //     eprintln!(
-        //         "{:?} {} || {} || {}",
-        //         pos,
-        //         token.token_ctx(doc),
-        //         token.text,
-        //         ntoken.text
-        //     );
-        // }
-        return if res { Some(()) } else { None };
+        // Compare against the first greek token found
+        let mut idx = token.index + 1;
+        while let Some(ntoken) = doc.get(idx) {
+            if ntoken.greek {
+                let res = !ALLOWED_WORDS_AFTER_DOUBLE_ACCENT.contains(&ntoken.text);
+                // if res {
+                //     eprintln!(
+                //         "{:?} {} || {} || {}",
+                //         pos,
+                //         token.token_ctx(doc),
+                //         token.text,
+                //         ntoken.text
+                //     );
+                // }
+                return if res { Some(()) } else { None };
+            }
+            idx += 1;
+        }
     }
 
     None
@@ -107,6 +166,22 @@ mod tests {
     test_fa!(fa_nonalpha_strings2, "[[εορτάζοντας]]/[[εορτάζων]]", true);
 
     // Double accent no pronoun
-    test_fa!(fa_double_accent_ok, "το πρόσωπό μου", true);
+    test_fa!(fa_double_accent_ok1, "το πρόσωπό μου", true);
+    test_fa!(fa_double_accent_ok2, "για την μετακίνησή τους.", true);
+    test_fa!(fa_double_accent_ok3, "και τον στηθόδεσμό της.", true);
+    test_fa!(fa_double_accent_ok4, "τὸ παρηγόρημά μου.", true);
     test_fa!(fa_double_accent_nok, "το πρόσωσωπό μου", false);
+
+    // Should correctly detect <which> next word must be a pronoun
+    test_fa!(fa_double_accent_spaces1, "Ανάμεσά τους", true);
+    test_fa!(fa_double_accent_spaces2, "Ανάμεσά  τους", true);
+
+    // Some are not really pronouns
+    test_fa!(fa_double_accent_pronouns1, "μετὰ τὸ πρόγευμά των", true);
+    test_fa!(fa_double_accent_pronouns2, "ἔκαμε κίνησίν τινα", true);
+    test_fa!(fa_double_accent_pronouns3, "βραδύτερόν τι", true);
+    test_fa!(fa_double_accent_pronouns4, "καπετάνισσά μ᾿", true);
+
+    test_fa!(fa_double_accent_einai_old1, "Κύριός ἐστιν", true);
+    test_fa!(fa_double_accent_einai_old2, "Ὄμφακές εἰσι", true);
 }

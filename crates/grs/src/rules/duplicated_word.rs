@@ -5,20 +5,23 @@ use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::Token;
 
+// NOTE: Will not detect duplication if they are of different casing.
+// Ex. Πρώτα πρώτα
+
 // Based on common expressions
 #[rustfmt::skip]
-const DUPLICATED_WORD_EXCEPTIONS: [&str; 37] = [
+const DUPLICATED_WORD_EXCEPTIONS: [&str; 41] = [
     "κάτω", "γύρω", "μπροστά", "πλάι", "πέρα", "πάνω", "κάτω",
     "λίγο", "λίγα", "πολύ", "πάρα",
     "καλά",
-    "πρώτα", "πρώτη", "πρώτον",
+    "πρώτα", "πρώτη", "πρώτης", "πρώτον", "πρώτοι",
     "ίσως",
     "πότε",
     "κάπου", "όπως",
-    "πρωί", "νωρίς",
+    "πρωί", "βράδυ", "νωρίς",
     "γρήγορα", "σιγά", "αργά", "χονδρά",
     "ίσα",
-    "ένα", "έναν", "μια", "δυο", "τρία", "πενήντα",
+    "ένα", "έναν", "ένας", "μια", "δυο", "τρία", "πενήντα",
     "κούτσα",
     "άκρη",
     "λογής",
@@ -29,7 +32,10 @@ const DUPLICATED_WORD_EXCEPTIONS: [&str; 37] = [
 fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
     debug_assert!(!token.punct && token.greek);
 
-    if token.text.is_empty()
+    // Ignore:
+    // * empty text
+    // * one-letter duplications (cf. s p a c i n g) (2 bytes)
+    if token.text.len() < 3
         || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text)
         // Should also add pronouns and not open this can of worms:
         // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
@@ -86,7 +92,11 @@ mod tests {
     test_dw!(numbers2, "τρία τρία", true);
     test_dw!(other1, "θα διαφθαρούν όλα πέρα πέρα", true);
     test_dw!(other2, "είναι πάρα πάρα πολλά", true);
+    test_dw!(other3, "κατέβαινε το βράδυ βράδυ", true);
     test_dw!(pron1, "Λοιπόν το ένστικτό σου σου φώναξε", true);
     test_dw!(expr1, "ο που αγάλι αγάλι περπατεί", true);
     test_dw!(expr2, "στο κάτω κάτω της γραφής", true);
+
+    // Ignore spacing emphasis, i.e. s p a c i n g
+    test_dw!(spacing, "Ω σ α ν ν ά", true);
 }
