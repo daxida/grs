@@ -83,8 +83,8 @@ const ALLOWED_WORDS_AFTER_DOUBLE_ACCENT: [&str; 62] = conc!(
 
 // Rewrite of grac::diacritic_pos that forces synizesis to prevent
 // many false positives.
-fn diacritic_pos(s: &str, diacritic: char) -> Vec<usize> {
-    syllabify_el_mode(s, Merge::Every)
+fn diacritic_pos(s: &str, diacritic: char, merge: Merge) -> Vec<usize> {
+    syllabify_el_mode(s, merge)
         .iter()
         .rev()
         .enumerate()
@@ -104,7 +104,7 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
         return None;
     }
 
-    let pos = diacritic_pos(token.text, Diacritic::ACUTE);
+    let pos = diacritic_pos(token.text, Diacritic::ACUTE, Merge::Every);
 
     // accent before antepenult
     if pos.last().is_some_and(|pos| *pos > 3) {
@@ -113,6 +113,15 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
 
     // double accents with no pronoun
     if pos.len() > 1 {
+        // Check that the double accents are in the correct position
+        //
+        // We recompute the pos to not get a false positive on synizesis.
+        // It should be quite cheap since this branch is quite rare already.
+        let pos = diacritic_pos(token.text, Diacritic::ACUTE, Merge::Never);
+        if pos != [1, 3] {
+            return Some(());
+        }
+
         // Compare against the first greek token found
         let mut idx = token.index + 1;
         while let Some(ntoken) = doc.get(idx) {
@@ -181,6 +190,9 @@ mod tests {
     test_fa!(fa_double_accent_ok3, "και τον στηθόδεσμό της.", true);
     test_fa!(fa_double_accent_ok4, "τὸ παρηγόρημά μου.", true);
     test_fa!(fa_double_accent_nok, "το πρόσωσωπό μου", false);
+
+    // Double accent at wrong position
+    test_fa!(fa_double_accent_pos_nok, "στην καμάρά της", false);
 
     // Should correctly detect <which> next word must be a pronoun
     test_fa!(fa_double_accent_spaces1, "Ανάμεσά τους", true);

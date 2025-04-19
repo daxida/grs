@@ -4,14 +4,14 @@
 // * και το κτήριο του, παλαιού πλέον, Μουσείου Ακρόπολης
 
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::followed_by_elliptic_abbreviation;
 use crate::doc::Doc;
+use crate::doc::followed_by_elliptic_abbreviation;
 use crate::registry::Rule;
 use crate::tokenizer::Token;
+use grac::Diacritic;
 use grac::add_acute_at;
 use grac::constants::{APOSTROPHES, MULTIPLE_PRONUNCIATION};
 use grac::diacritic_pos;
-use grac::Diacritic;
 
 /// Returns `true` if this `word` has only an accent on the antepenultimate.
 fn is_proparoxytone_strict(word: &str) -> bool {
