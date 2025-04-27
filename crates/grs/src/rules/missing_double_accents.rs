@@ -126,9 +126,19 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         || followed_by_elliptic_abbreviation(nntoken, doc)
     {
         return Some(());
-    // Case να. Ex. Άφησε τον να βρει μόνος του...
+    // Case να.
+    // Ex. Άφησε τον να βρει μόνος του...
+    //
     // The only two pronouns that introduce ambiguity are το & του
     } else if nntoken.text == "να" && ntoken.text != "το" && ntoken.text != "του" {
+        return Some(());
+    // Case πως (but not πώς!).
+    // Ex.  βεβαίωσε τον πως μόνος ο δρόμος...
+    // Ex.  εξήγησε του πως είναι ανάγκη να...
+    //
+    // We exclude το & του to avoid false positive when πώς is mispelled as πως.
+    // CEx. ...να δει και στην πραγματικότητα το πως δουλεύει.
+    } else if nntoken.text == "πως" && !["το", "του"].contains(&ntoken.text) {
         return Some(());
     }
 
@@ -257,6 +267,11 @@ mod tests {
     test_mda!(before_na2, "τάζοντας της να τη στεφανωθή,", false);
     test_mda!(before_na3, "τερπνήν ενασχόλησιν το να ρίπτωσι λίθους", true);
     test_mda!(before_na4, "πρόθεση του να παραιτηθεί", true);
+
+    // Before pos
+    test_mda!(before_pos1, "βεβαίωσε τον πως μόνος ο δρόμος", false);
+    // Exclude του even if there is an error.
+    test_mda!(before_pos2, "εξήγησε του πως είναι ανάγκη να", true);
 
     // Punctuation
     test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);

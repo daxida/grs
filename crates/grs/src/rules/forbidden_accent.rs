@@ -99,8 +99,11 @@ fn diacritic_pos(s: &str, diacritic: char, merge: Merge) -> Vec<usize> {
 }
 
 fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
-    // Fast discard if possible (12 bytes ~ 6 Greek chars)
-    if token.text.len() < 12 || !token.text.chars().all(is_greek_char) {
+    // Fast discard if possible (10 bytes ~ 5 Greek chars)
+    //
+    // 12 bytes should be fine for accents over the antepenult, but
+    // it is too short for double accents in wrong position. Cf. ρούχά του
+    if token.text.len() < 10 || !token.text.chars().all(is_greek_char) {
         return None;
     }
 
@@ -176,9 +179,10 @@ mod tests {
 
     // Shortest possible words
     test_fa!(fa_shortest1, "όταραχη", false);
-    test_fa!(fa_shortest2, "άααα", true);
-    test_fa!(fa_shortest3, "άαααα", true);
-    test_fa!(fa_shortest4, "άααααα", false); // we start at 6
+    test_fa!(fa_shortest2, "άαα", true);
+    test_fa!(fa_shortest3, "άααα", true);
+    test_fa!(fa_shortest4, "άαααα", false); // we start at 5
+    test_fa!(fa_shortest5, "άααααα", false);
 
     // These get syllabized as a unit
     test_fa!(fa_nonalpha_strings1, "ανέγερση|ανέγερσης", true);
@@ -192,7 +196,8 @@ mod tests {
     test_fa!(fa_double_accent_nok, "το πρόσωσωπό μου", false);
 
     // Double accent at wrong position
-    test_fa!(fa_double_accent_pos_nok, "στην καμάρά της", false);
+    test_fa!(fa_double_accent_pos_nok1, "στην καμάρά της", false);
+    test_fa!(fa_double_accent_pos_nok2, "εμάζωξε τα ρούχά του", false);
 
     // Should correctly detect <which> next word must be a pronoun
     test_fa!(fa_double_accent_spaces1, "Ανάμεσά τους", true);
