@@ -6,6 +6,7 @@ mod forbidden_accent;
 mod missing_accent_capital;
 mod missing_double_accents;
 mod mixed_scripts;
+mod punctuation;
 
 // Use raw text
 mod ambiguous_char;
@@ -19,6 +20,7 @@ pub use forbidden_accent::forbidden_accent;
 pub use missing_accent_capital::missing_accent_capital;
 pub use missing_double_accents::missing_double_accents;
 pub use mixed_scripts::mixed_scripts;
+pub use punctuation::punctuation;
 
 pub use ambiguous_char::ambiguous_char;
 pub use forbidden_char::forbidden_char;
