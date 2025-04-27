@@ -1,11 +1,13 @@
+#![allow(clippy::missing_errors_doc)]
+
 use grs::diagnostic::{Diagnostic, Fix};
-use grs::registry::{code_to_rule, rule_to_code, Rule};
+use grs::registry::{Rule, code_to_rule, rule_to_code};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
 use strum::IntoEnumIterator;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
+use wasm_bindgen::prelude::*;
 use web_sys::js_sys::Error;
 
 #[wasm_bindgen(typescript_custom_section)]
@@ -52,16 +54,15 @@ fn byte_range_to_char_range(text: &str, byte_range: Range<usize>) -> Range<usize
         char_end = Some(text.chars().count());
     }
 
-    match (char_start, char_end) {
-        (Some(start), Some(end)) => start..end,
-        _ => {
-            web_sys::console::log_1(&"Warning: Invalid range, using default 0..0".into());
-            0..0
-        }
+    if let (Some(start), Some(end)) = (char_start, char_end) {
+        start..end
+    } else {
+        web_sys::console::log_1(&"Warning: Invalid range, using default 0..0".into());
+        0..0
     }
 }
 
-fn to_fixjs(fix: &Option<Fix>) -> Option<String> {
+fn to_fixjs(fix: Option<&Fix>) -> Option<String> {
     // The trim is hacky...
     fix.as_ref().map(|fix| fix.replacement.trim().to_string())
 }
@@ -102,7 +103,7 @@ impl DiagnosticJs {
         Self {
             kind,
             range: start..end,
-            fix: to_fixjs(&diagnostic.fix),
+            fix: to_fixjs(diagnostic.fix.as_ref()),
         }
     }
 }

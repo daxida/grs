@@ -10,7 +10,6 @@ license = "MIT"
 
 [workspace.dependencies]
 grs = { path = "crates/grs" }
-grs_wasm = { path = "crates/grs_wasm" }
 
 # Grac-related
 aho-corasick = { version = "1.1.3"}

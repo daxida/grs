@@ -7,7 +7,7 @@ use crate::diagnostic::{Diagnostic, Fix};
 use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
-use crate::tokenizer::{tokenize, Token};
+use crate::tokenizer::{Token, tokenize};
 
 #[allow(clippy::wildcard_imports)]
 use crate::rules::*;
@@ -70,7 +70,7 @@ pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
     diagnostics.extend(check_raw(text, config));
 
     // Early exit if we do not need tokenizing.
-    if !config.iter().any(|rule| rule.requires_tokenizing()) {
+    if !config.iter().any(super::registry::Rule::requires_tokenizing) {
         return diagnostics;
     }
 

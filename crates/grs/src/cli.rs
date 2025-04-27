@@ -1,6 +1,6 @@
 use crate::registry::Rule;
-use clap::builder::{PossibleValue, TypedValueParser};
 use clap::Parser;
+use clap::builder::{PossibleValue, TypedValueParser};
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 

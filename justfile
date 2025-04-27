@@ -3,8 +3,8 @@
 wasm outdir:
   wasm-pack build crates/grs_wasm --target web --out-dir "../../{{outdir}}/pkg"
 
-clippy:
-  cargo clippy --all-targets --all-features -- -W clippy::nursery -W clippy::pedantic -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::cast_precision_loss
+clippy *args:
+  cargo clippy --all-targets --all-features {{args}} -- -W clippy::nursery -W clippy::pedantic -A clippy::must_use_candidate -A clippy::module_name_repetitions -A clippy::cast_precision_loss
 
 RULE := "ALL"
 

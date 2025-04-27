@@ -19,7 +19,7 @@ impl<'a> CodeDiff<'a> {
     }
 
     #[allow(dead_code)]
-    fn header(&mut self, original: &'a str, modified: &'a str) {
+    const fn header(&mut self, original: &'a str, modified: &'a str) {
         self.header = Some((original, modified));
     }
 }

@@ -1,6 +1,6 @@
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::is_abbreviation_or_ends_with_dot;
 use crate::doc::Doc;
+use crate::doc::is_abbreviation_or_ends_with_dot;
 use crate::registry::Rule;
 use crate::tokenizer::Token;
 use grac::has_any_diacritic;
