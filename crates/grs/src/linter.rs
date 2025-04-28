@@ -67,13 +67,16 @@ fn check_raw(text: &str, config: Config) -> Vec<Diagnostic> {
 }
 
 pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
-    let mut diagnostics = vec![];
+    let mut diagnostics = Vec::new();
 
     // Raw replacements that need no tokenizing.
     diagnostics.extend(check_raw(text, config));
 
     // Early exit if we do not need tokenizing.
-    if !config.iter().any(super::registry::Rule::requires_tokenizing) {
+    if !config
+        .iter()
+        .any(super::registry::Rule::requires_tokenizing)
+    {
         return diagnostics;
     }
 

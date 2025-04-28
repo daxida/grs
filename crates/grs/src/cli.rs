@@ -26,6 +26,7 @@ pub struct Args {
         value_delimiter = ',',
         value_name = "RULE_CODE",
         value_parser = RuleSelectorParser,
+        hide_possible_values = true,
     )]
     pub select: Option<Vec<RuleSelector>>,
 
@@ -35,6 +36,7 @@ pub struct Args {
         value_delimiter = ',',
         value_name = "RULE_CODE",
         value_parser = RuleSelectorParser,
+        hide_possible_values = true,
     )]
     pub ignore: Option<Vec<RuleSelector>>,
 

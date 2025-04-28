@@ -85,6 +85,10 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // * σε + τον (or other acc. pronouns)
     // Ex.  σπρώχνοντας τον σε μια καρέγλα κοντά του.
     // CEx. χτύπησε τον σε σύγχυση εχθρό...
+    //
+    // * GEN_PRON + ACC_PRON
+    // Ex.  άφησε μου τον καιρό
+    // CEx. Όποιος μου τον φέρει...
 
     // For an error to exist, the next token must be a pronoun
     let ntoken = doc.get(token.index + 1)?;
@@ -275,7 +279,8 @@ mod tests {
 
     // Punctuation
     test_mda!(before_quote_marks, "διάρκεια του “πειράματος”", true);
-    test_mda!(colon, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
+    test_mda!(colon1, "ανακαλύφθηκε το: 'Φέγγαρι'", true);
+    test_mda!(colon2, "αναγνωρίζοντας τον:", true); // Could be an error
     test_mda!(inner_punct, "χτυπώ τα [[πόδι]]α μου στο", true);
     test_mda!(punct1, "τα υπόλοιπα ρήματα σε -άω", true);
     // Happens in dictionaries

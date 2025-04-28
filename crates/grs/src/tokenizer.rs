@@ -15,6 +15,13 @@ use serde::{Deserialize, Serialize};
 /// may be an issue.
 ///
 /// Following spaCy, whitespace is attached to the previous token.
+///
+// If performance is an issue, consider storing only a pointer to the original
+// string, together with two extra offsets for text start and whitespace.
+// That is, the triplet (text, whitespace, range), should really only be a &str
+// and 2 usizes, one for the text start (so we have text end for free via &str.len)
+// and another for the whitespace end (we know the whitespace start since it
+// immediately follows token.text).
 //
 // Very simplified version of:
 // https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
@@ -99,11 +106,10 @@ pub fn tokenize(text: &str) -> Doc {
     let mut tokens = Vec::new();
 
     for w in text.split_inclusive(|c: char| c.is_whitespace()) {
-        let non_whitespace = w.trim_end_matches(|c: char| c.is_whitespace());
-        let (lpunct, word, rpunct) = split_punctuation(non_whitespace);
-
         let start = end;
         end = start + w.len();
+
+        let non_whitespace = w.trim_end();
 
         // Empty non_whitespace quick exit case.
         // Treat it as NOT punct since it is only whitespace.
@@ -114,6 +120,8 @@ pub fn tokenize(text: &str) -> Doc {
             index += 1;
             continue;
         }
+
+        let (lpunct, word, rpunct) = split_punctuation(non_whitespace);
 
         if !lpunct.is_empty() {
             let range = TextRange::new(start, start + lpunct.len());
@@ -289,5 +297,45 @@ mod tests {
         ];
 
         assert_eq!(doc, expected);
+    }
+
+    #[test]
+    fn test_tokenization_whitespace() {
+        let text = "Hello   \n";
+        let doc = tokenize(text);
+
+        let expected = vec![
+            Token {
+                text: "Hello",
+                whitespace: " ",
+                ..Token::default()
+            },
+            Token {
+                text: "",
+                whitespace: " ",
+                ..Token::default()
+            },
+            Token {
+                text: "",
+                whitespace: " ",
+                ..Token::default()
+            },
+            Token {
+                text: "",
+                whitespace: "\n",
+                ..Token::default()
+            },
+        ];
+
+        eprintln!("{:?}", doc);
+
+        for (i, (rec, exp)) in doc.iter().zip(expected.iter()).enumerate() {
+            assert_eq!(rec.text, exp.text);
+            assert_eq!(
+                rec.whitespace, exp.whitespace,
+                "Mismatch at index {}: whitespace field mismatch\n  expected: {:?}\n    actual: {:?}",
+                i, exp.whitespace, rec.whitespace
+            );
+        }
     }
 }
