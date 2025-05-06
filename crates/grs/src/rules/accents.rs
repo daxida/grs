@@ -1,30 +1,29 @@
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::{Doc, previous_token_is_apostrophe};
-use crate::doc::{is_abbreviation_or_ends_with_dot, previous_token_is_num};
 use crate::registry::Rule;
 use crate::rules::forbidden_accent::CORRECT_MULTISYLLABLE_NOT_ACCENTED;
-use crate::tokenizer::Token;
+use crate::tokenizer::{Doc, Token};
 use grac::constants::{APOSTROPHES, MONOSYLLABLE_ACCENTED_WITH_PRONOUNS};
-use grac::with_capitalized;
-use grac::{Diacritic, ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at};
+use grac::{
+    Diacritic, ends_with_diphthong, has_diacritic, has_diacritics, remove_diacritic_at,
+    with_capitalized,
+};
 
 fn is_monosyllable_accented(token: &Token) -> bool {
     // Fast discard if possible
-    token.text.len() < 12
-        && has_diacritic(token.text, Diacritic::ACUTE)
+    token.text().len() < 12
+        && has_diacritic(token.text(), Diacritic::ACUTE)
         // Do not treat "πλάι" as en error.
-        && !ends_with_diphthong(token.text)
+        && !ends_with_diphthong(token.text())
         // Expensive check
-        && token.syllables().len() == 1
+        && token.num_syllables() == 1
 }
 
-// This extra list is intended to deal with τί and ποιός variants.
+// This extra list is intended to deal with τί (not included) and ποιός variants.
 //
-// While τι is already detected, ποιός escapes our logic by not being
-// a monosyllable once it has the accent.
+// While τι is already detected, ποιός escapes our logic by not being a monosyllable
+// once it has the accent.
 //
-// Note that we don't include ποιόν, ποιού since they are ambiguous
-// and can come from the noun ποιόν.
+// It does not include ποιόν, ποιού since they can also come from the noun ποιόν.
 const EXTRA_MONOSYLLABLES: [&str; 16] = with_capitalized!([
     "ποιός",
     "ποιό",
@@ -37,16 +36,16 @@ const EXTRA_MONOSYLLABLES: [&str; 16] = with_capitalized!([
 ]);
 
 fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if !token.greek
-        || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text)
-        || is_abbreviation_or_ends_with_dot(token, doc)
-        || previous_token_is_num(token, doc)
-        || previous_token_is_apostrophe(token, doc)
+    if !token.is_greek_word()
+        || MONOSYLLABLE_ACCENTED_WITH_PRONOUNS.contains(&token.text())
+        || doc.is_abbreviation_or_ends_with_dot(token)
+        || doc.previous_token_is_num(token)
+        || doc.previous_token_is_apostrophe(token)
     {
         return None;
     }
 
-    if EXTRA_MONOSYLLABLES.contains(&token.text) || is_monosyllable_accented(token) {
+    if EXTRA_MONOSYLLABLES.contains(&token.text()) || is_monosyllable_accented(token) {
         return Some(());
     }
 
@@ -56,13 +55,13 @@ fn monosyllable_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
 /// Detect wrongly accented monosyllables
 pub fn monosyllable_accented(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
     if monosyllable_accented_opt(token, doc).is_some() {
-        let without_accent = remove_diacritic_at(token.text, 1, Diacritic::ACUTE);
+        let without_accent = remove_diacritic_at(token.text(), 1, Diacritic::ACUTE);
         diagnostics.push(Diagnostic {
             kind: Rule::MonosyllableAccented,
-            range: token.range_text(),
+            range: token.range(),
             fix: Some(Fix {
-                replacement: format!("{}{}", without_accent, token.whitespace),
-                range: token.range,
+                replacement: without_accent,
+                range: token.range(),
             }),
         });
     }
@@ -70,9 +69,9 @@ pub fn monosyllable_accented(token: &Token, doc: &Doc, diagnostics: &mut Vec<Dia
 
 fn is_multisyllable_not_accented(token: &Token) -> bool {
     !has_diacritics(
-        token.text,
+        token.text(),
         &[Diacritic::ACUTE, Diacritic::GRAVE, Diacritic::CIRCUMFLEX],
-    ) && token.syllables().len() > 1
+    ) && token.num_syllables() > 1
 }
 
 // ** Can appear on capitalized position.
@@ -89,32 +88,32 @@ const fn is_dash(ch: char) -> bool {
 }
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if !token.greek
-        || CORRECT_MULTISYLLABLE_NOT_ACCENTED.contains(&token.text)
-        || is_abbreviation_or_ends_with_dot(token, doc)
-        || previous_token_is_num(token, doc)
+    if !token.is_greek_word()
+        || CORRECT_MULTISYLLABLE_NOT_ACCENTED.contains(&token.text())
+        || doc.is_abbreviation_or_ends_with_dot(token)
+        || doc.previous_token_is_num(token)
         // Ignore if all caps. Ex. ΒΟΥΤΥΡΑ is correct.
-        || token.text.chars().all(char::is_uppercase)
+        || token.text().chars().all(char::is_uppercase)
         // Ignore acronyms and some other compounds. Ex. Α.Υ., Ο,ΤΙ ΝΑ 'ΝΑΙ
-        || token.text.contains(['.', '|', ':', ',', '/', '-', '('])
+        || token.text().contains(['.', '|', ':', ',', '/', '-', '('])
     {
         return None;
     }
 
-    if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
-        if ptoken.punct {
-            if let Some(ppunct_first_char) = ptoken.text.chars().next() {
+    if let Some(ptoken) = doc.prev_token_not_whitespace(token) {
+        if ptoken.is_punctuation() {
+            if let Some(ppunct_first_char) = ptoken.text().chars().next() {
                 if APOSTROPHES.contains(&ppunct_first_char) {
                     return None;
                 }
             }
         }
     }
-    if let Some(ntoken) = doc.get(token.index + 1) {
-        if ntoken.punct {
-            if let Some(npunct_first_char) = ntoken.text.chars().next() {
+    if let Some(ntoken) = doc.next_token_not_whitespace(token) {
+        if ntoken.is_punctuation() {
+            if let Some(npunct_first_char) = ntoken.text().chars().next() {
                 if APOSTROPHES.contains(&npunct_first_char)
-                    || (PROSTAKTIKOI.contains(&token.text) && is_dash(npunct_first_char))
+                    || (PROSTAKTIKOI.contains(&token.text()) && is_dash(npunct_first_char))
                 // Maybe just ignoring all dashes makes more sense
                 // || is_dash(npunct_first_char)
                 {
@@ -136,7 +135,7 @@ pub fn multisyllable_not_accented(token: &Token, doc: &Doc, diagnostics: &mut Ve
         // No Fix: we can not know where the accent was supposed to be.
         diagnostics.push(Diagnostic {
             kind: Rule::MultisyllableNotAccented,
-            range: token.range_text(),
+            range: token.range(),
             fix: None,
         });
     }
@@ -252,10 +251,10 @@ mod tests {
     test_multi!(multi_leo2, "σώματά φασι", true);
 
     // Prostaktikoi
-    test_multi!(prostatiko1, "γερο - Ευθύμιο", true);
-    test_multi!(prostatiko2, "γερο-Ευθύμιο", true);
-    test_multi!(prostatiko3, "παπα - Ευθύμιο", true);
-    test_multi!(prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
-    test_multi!(prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
-    test_multi!(prostatiko6_dash, "τον μπαρμπα – Δημητρό", true);
+    test_multi!(multi_prostatiko1, "γερο - Ευθύμιο", true);
+    test_multi!(multi_prostatiko2, "γερο-Ευθύμιο", true);
+    test_multi!(multi_prostatiko3, "παπα - Ευθύμιο", true);
+    test_multi!(multi_prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
+    test_multi!(multi_prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
+    test_multi!(multi_prostatiko6_dash, "τον μπαρμπα – Δημητρό", true);
 }

@@ -1,7 +1,6 @@
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
 use crate::registry::Rule;
-use crate::tokenizer::Token;
+use crate::tokenizer::{Doc, Token};
 use grac::is_greek_char;
 
 const LATIN_TO_GREEK: [(char, char); 22] = [
@@ -33,14 +32,13 @@ const LATIN_TO_GREEK: [(char, char); 22] = [
 fn mixed_scripts_opt(token: &Token) -> Option<()> {
     let mut has_latin = false;
     let mut has_greek = false;
-    for ch in token.text.chars() {
+    for ch in token.text().chars() {
         if is_greek_char(ch) {
             has_greek = true;
         } else if LATIN_TO_GREEK.iter().any(|(latin, _)| ch == *latin) {
             has_latin = true;
         } else if !ch.is_alphabetic() {
-            // If ch is not alphabetic, avoid diagnosing an error, since
-            // it can be anything:
+            // Avoid diagnosing an error, since it can be anything:
             // - μτφδ|en|el|text=1|radio
             // - Αρχείο:Gravestone
             // - B-λεμφοκύτταρο,
@@ -60,24 +58,22 @@ fn mixed_scripts_opt(token: &Token) -> Option<()> {
 /// Checks if a token, which is expected to be in Greek, contains any Latin characters.
 /// Ex. νέo (the o is the latin letter o)
 pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    debug_assert!(!token.greek && !token.punct);
-
     if mixed_scripts_opt(token).is_some() {
-        let mut fixed = String::new();
-        for ch in token.text.chars() {
+        let mut replacement = String::new();
+        for ch in token.text().chars() {
             let fixed_ch = LATIN_TO_GREEK
                 .iter()
                 .find_map(|(latin, greek)| if ch == *latin { Some(greek) } else { None })
                 .unwrap_or(&ch);
-            fixed.push(*fixed_ch);
+            replacement.push(*fixed_ch);
         }
 
         diagnostics.push(Diagnostic {
             kind: Rule::MixedScripts,
-            range: token.range_text(),
+            range: token.range(),
             fix: Some(Fix {
-                replacement: format!("{}{}", fixed, token.whitespace),
-                range: token.range,
+                replacement,
+                range: token.range(),
             }),
         });
     }
@@ -86,14 +82,26 @@ pub fn mixed_scripts(token: &Token, _doc: &Doc, diagnostics: &mut Vec<Diagnostic
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test_rule;
-    use crate::tokenizer::tokenize;
+    use crate::{test_fix, test_rule};
+
+    macro_rules! test_fix_ms {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test_fix!($name, &[Rule::MixedScripts], $text, $expected);
+        };
+    }
 
     macro_rules! test_ms {
         ($name:ident, $text:expr, $expected:expr) => {
             test_rule!($name, mixed_scripts, $text, $expected);
         };
     }
+
+    // The first char is an uppercase "a"
+    test_fix_ms!(mixed_scripts_fix, "Aλλά", "Αλλά");
+
+    test_ms!(mixed_scripts_ok, "τίποτα", true);
+    test_ms!(mixed_scripts_only_latin, "aou", true);
+    test_ms!(mixed_scripts_non_alpha, "ελ.629@books.google", true);
 
     test_ms!(lowercase_o, "νέo", false);
     test_ms!(uppercase_a, "Áλλα", false);

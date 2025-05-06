@@ -4,10 +4,9 @@ use itertools::Itertools;
 use std::collections::HashMap;
 
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
-use crate::tokenizer::{Token, tokenize};
+use crate::tokenizer::{Doc, Token, tokenize};
 
 #[allow(clippy::wildcard_imports)]
 use crate::rules::*;
@@ -72,29 +71,29 @@ pub fn check(text: &str, config: Config) -> Vec<Diagnostic> {
     // Raw replacements that need no tokenizing.
     diagnostics.extend(check_raw(text, config));
 
-    // Early exit if we do not need tokenizing.
-    if !config
+    let rules_requiring_doc: Vec<_> = config
         .iter()
-        .any(super::registry::Rule::requires_tokenizing)
-    {
+        .copied()
+        .filter(super::registry::Rule::requires_tokenizing)
+        .collect();
+
+    // Early exit if we do not need tokenizing.
+    if rules_requiring_doc.is_empty() {
         return diagnostics;
     }
 
     let doc = tokenize(text);
 
-    for token in doc.iter().filter(|token| !token.punct) {
-        // TODO: A better tokenizer require locator > no but do it for printing lines
-
-        // Run the token-based rules.
-        // Atm. every rule requires some context and can not work with the token alone.
-        // diagnostics.extend(check_token(token, config));
-
-        // Run the token-context-based rules.
-        if token.greek {
-            diagnostics.extend(check_token_with_context(token, &doc, config));
+    // Run the token-context-based rules.
+    for token in &doc {
+        // A match should be better.
+        if token.is_whitespace() || token.is_punctuation() {
+            // No rules at the moment concern these two
+        } else if token.is_greek_word() {
+            diagnostics.extend(check_token_with_context(token, &doc, &rules_requiring_doc));
         } else {
             // Does not use doc
-            if config.contains(&Rule::MixedScripts) {
+            if rules_requiring_doc.contains(&Rule::MixedScripts) {
                 mixed_scripts(token, &doc, &mut diagnostics);
             }
         }
@@ -233,12 +232,12 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
 
     // These rules have no fixes: remove them from the config.
     // TODO: do this before reaching this function
-    let conf = config
+    let rules_with_fixes = config
         .iter()
         .copied()
-        .filter(|rule| *rule != Rule::MultisyllableNotAccented && *rule != Rule::DuplicatedWord)
+        .filter(super::registry::Rule::has_fix)
         .collect::<Vec<_>>();
-    let config: Config = &conf;
+    let config: Config = &rules_with_fixes;
 
     // This is potentially a bad idea iif a fix could affect previous tokens,
     // which is possible but rare since there is not much dependency across tokens.
@@ -293,12 +292,6 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
                     break;
                 }
             }
-
-            // Only for debugging: fixing should not print content messages.
-            //
-            // let message = get_rich_context_message(&transformed, &fix.range, &rule);
-            // println!("{}", message);
-            // messages.push(message);
 
             *fixed.entry(rule).or_insert(0) += 1;
 

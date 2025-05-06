@@ -50,14 +50,14 @@ impl Rule {
     }
 }
 
-/// Return the code from the name:
-/// MissingDoubleAccents => MDA
+/// Get the code from the name:
+/// "MissingDoubleAccents" => "MDA"
 fn name_to_code(name: &str) -> String {
     name.chars().filter(|c| c.is_uppercase()).collect()
 }
 
-/// Return the rule from the code:
-/// MDA => Rule::MissingDoubleAccents
+/// Get the rule from the code:
+/// "MDA" => `Rule::MissingDoubleAccents`
 pub fn code_to_rule(code: &str) -> Option<Rule> {
     Rule::iter().find(|rule| {
         let name: &'static str = rule.into();
@@ -65,14 +65,14 @@ pub fn code_to_rule(code: &str) -> Option<Rule> {
     })
 }
 
-/// Return the name of the rule:
-/// Rule::MissingDoubleAccents => MissingDoubleAccents
+/// Get the name from the rule:
+/// `Rule::MissingDoubleAccents` => "MissingDoubleAccents"
 pub fn rule_to_name(rule: Rule) -> &'static str {
     rule.into()
 }
 
-/// Return the acronym of the rule:
-/// Rule::MissingDoubleAccents => MDA
+/// Get the code from the rule:
+/// `Rule::MissingDoubleAccents` => "MDA"
 pub fn rule_to_code(rule: Rule) -> String {
     name_to_code(rule_to_name(rule))
 }

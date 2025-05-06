@@ -1,96 +1,74 @@
-use crate::doc::Doc;
 use crate::range::TextRange;
 use colored::Colorize;
-use grac::is_greek_word;
-use grac::split_punctuation;
-use grac::syllabify_el;
+use grac::constants::APOSTROPHES;
+use grac::{is_greek_word, syllabify_el};
+use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-/// Token type.
-///
-/// Also stores if the token is punctuation or a Greek word since these are
-/// widely used through most rules. In case of huge corpora analysis this
-/// may be an issue.
-///
-/// Following spaCy, whitespace is attached to the previous token.
-///
-// If performance is an issue, consider storing only a pointer to the original
-// string, together with two extra offsets for text start and whitespace.
-// That is, the triplet (text, whitespace, range), should really only be a &str
-// and 2 usizes, one for the text start (so we have text end for free via &str.len)
-// and another for the whitespace end (we know the whitespace start since it
-// immediately follows token.text).
-//
-// Very simplified version of:
-// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+// This should probably be a struct containing the functions below as methods.
+// pub type Doc<'a> = Vec<LoadedToken<'a>>;
+
+// TODO:
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-pub struct Token<'a> {
-    pub text: &'a str,
-    /// Trailing whistespace
-    pub whitespace: &'a str,
-    /// Index in the Doc
-    pub index: usize,
-    /// Start and end byte of the token
-    pub range: TextRange,
-    /// Is punctuation?
-    pub punct: bool,
-    /// Is greek word?
-    pub greek: bool,
+pub struct Doc<'a> {
+    src: &'a str,
+    tokens: Vec<Token<'a>>,
 }
 
-impl<'a> Token<'a> {
-    pub const fn new(
-        text: &'a str,
-        whitespace: &'a str,
-        index: usize,
-        range: TextRange,
-        punct: bool,
-        greek: bool,
-    ) -> Self {
-        Self {
-            text,
-            whitespace,
-            index,
-            range,
-            punct,
-            greek,
-        }
-    }
+impl<'a> Deref for Doc<'a> {
+    type Target = Vec<Token<'a>>;
 
-    // Note that this function is very expensive.
-    pub fn syllables(&self) -> Vec<&str> {
-        syllabify_el(self.text)
+    fn deref(&self) -> &Self::Target {
+        &self.tokens
     }
+}
 
-    /// Start and end byte of the text part of the token.
-    ///
-    /// Compare it with [`Token::range`], which includes whitespace.
-    pub const fn range_text(&self) -> TextRange {
-        if self.whitespace.is_empty() {
-            self.range
-        } else {
-            let text_end = self.range.end().saturating_sub(self.whitespace.len());
-            TextRange::new(self.range.start(), text_end)
-        }
+impl DerefMut for Doc<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.tokens
     }
+}
 
+// IntoIterator for LoadedDoc (move)
+impl<'a> IntoIterator for Doc<'a> {
+    type Item = Token<'a>;
+    type IntoIter = std::vec::IntoIter<Token<'a>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tokens.into_iter()
+    }
+}
+
+// IntoIterator for &LoadedDoc (borrow)
+impl<'a> IntoIterator for &'a Doc<'a> {
+    type Item = &'a Token<'a>;
+    type IntoIter = std::slice::Iter<'a, Token<'a>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.tokens.iter()
+    }
+}
+
+impl Doc<'_> {
     /// Debug function. Stringify the context of the token.
-    pub fn token_ctx(&self, doc: &Doc) -> String {
-        let start_from = 5;
-        let start = self.index.saturating_sub(start_from);
-        let end = self.index + 5;
+    pub fn context(&self, token: &Token) -> String {
+        let n_tokens_before = 5;
+        let n_tokens_after = 5;
+
+        let start = token.index.saturating_sub(n_tokens_before);
+        let end = token.index + n_tokens_after;
+
         let ctx = (start..=end)
-            .filter_map(|idx| doc.get(idx))
+            .filter_map(|idx| self.get(idx))
             .enumerate()
             .map(|(idx, t)| {
-                if idx == start_from {
-                    let chunk = format!("{}{}", t.text, t.whitespace);
-                    chunk.bold().to_string()
+                // May fail at the very beginning of the text
+                if idx == n_tokens_before {
+                    t.text().bold().to_string()
                 } else {
-                    format!("{}{}", t.text, t.whitespace)
+                    t.text().to_string()
                 }
             })
             .collect::<String>();
@@ -99,243 +77,380 @@ impl<'a> Token<'a> {
     }
 }
 
-// Note: numbers are treated as PUNCT (not ideal)
+// Iteration methods
+impl<'a> Doc<'a> {
+    #[inline]
+    pub fn next_token_not_whitespace(&'a self, token: &Token) -> Option<&'a Token<'a>> {
+        let mut idx = token.index;
+        loop {
+            idx += 1;
+            let ntoken = self.get(idx)?;
+            if ntoken.kind != TokenKind::Whitespace {
+                return Some(ntoken);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn next_token_greek_word(&'a self, token: &Token) -> Option<&'a Token<'a>> {
+        let mut idx = token.index;
+        loop {
+            idx += 1;
+            let ntoken = self.get(idx)?;
+            if ntoken.kind == TokenKind::GreekWord {
+                return Some(ntoken);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn prev_token_not_whitespace(&'a self, token: &Token) -> Option<&'a Token<'a>> {
+        let mut idx = token.index;
+        while idx > 0 {
+            idx -= 1;
+            let ntoken = self.get(idx)?;
+            if ntoken.kind != TokenKind::Whitespace {
+                return Some(ntoken);
+            }
+        }
+        None
+    }
+}
+
+// Property methods
+impl Doc<'_> {
+    pub fn previous_token_is_num(&self, token: &Token) -> bool {
+        self.prev_token_not_whitespace(token)
+            .is_some_and(Token::is_num)
+    }
+
+    pub fn previous_token_is_apostrophe(&self, token: &Token) -> bool {
+        self.prev_token_not_whitespace(token)
+            .is_some_and(Token::is_apostrophe)
+    }
+
+    /// A word is considered an abbreviation if it is followed by an apostrophe.
+    /// Ex. όλ' αυτά
+    ///
+    /// Note that όλ ' αυτά (with an space before the apostrophe) is not considered an
+    /// abbreviation.
+    ///
+    /// A dot must be treated like a black box since there is no way to distinguish
+    /// if it is a period, an ellipsis or an abbreviation dot. Checking if the next word
+    /// is capitalized is not a solution, since an abbreviation might be followed by
+    /// a proper noun, invalidating the logic. Ex. Λεωφ. Κηφισού.
+    pub fn is_abbreviation_or_ends_with_dot(&self, token: &Token) -> bool {
+        if let Some(ntoken) = self.next_token_not_whitespace(token) {
+            if ntoken.is_punctuation() {
+                if let Some(npunct_first_char) = ntoken.text().chars().next() {
+                    if ['.', '…'].contains(&npunct_first_char)
+                        || APOSTROPHES.contains(&npunct_first_char)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum TokenKind {
+    /// Any whitespace character sequence.
+    Whitespace,
+
+    /// A word.
+    #[default]
+    Word,
+
+    /// A Greek word.
+    GreekWord,
+
+    /// Punctuation token.
+    Punctuation,
+}
+
+/// Token type.
+///
+// Should probably not store the slice (text) part, and delegate that to Doc.
+//
+// Initially, very simplified version of:
+// https://github.com/explosion/spaCy/blob/311f7cc9fbd44e3de14fa673fa9c5146ea223624/spacy/tokenizer.pyx#L25
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct Token<'a> {
+    /// Index in the Doc
+    index: usize,
+    /// Text value of the token
+    text: &'a str,
+    /// Start byte of the text in source
+    offset: u32,
+    kind: TokenKind,
+}
+
+impl<'a> Token<'a> {
+    /// # Panics
+    ///
+    /// Panics if `offset` is larger than `u32::MAX`.
+    pub fn new(text: &'a str, index: usize, offset: usize, kind: TokenKind) -> Self {
+        Self {
+            text,
+            index,
+            offset: u32::try_from(offset).unwrap(),
+            kind,
+        }
+    }
+
+    #[inline]
+    pub const fn text(&self) -> &str {
+        self.text
+    }
+
+    /// Start and end byte of the token.
+    #[inline]
+    pub const fn range(&self) -> TextRange {
+        let offset = self.offset as usize;
+        TextRange::new(offset, offset + self.text.len())
+    }
+}
+
+// Property methods
+impl Token<'_> {
+    #[inline]
+    pub fn is_word(&self) -> bool {
+        self.kind == TokenKind::Word
+    }
+
+    #[inline]
+    pub fn is_whitespace(&self) -> bool {
+        self.kind == TokenKind::Whitespace
+    }
+
+    #[inline]
+    pub fn is_punctuation(&self) -> bool {
+        self.kind == TokenKind::Punctuation
+    }
+
+    #[inline]
+    pub fn is_greek_word(&self) -> bool {
+        self.kind == TokenKind::GreekWord
+    }
+
+    #[inline]
+    fn is_num(&self) -> bool {
+        self.is_punctuation() && self.text().chars().all(|c| c.is_ascii_digit())
+    }
+
+    #[inline]
+    fn is_apostrophe(&self) -> bool {
+        self.is_punctuation()
+            && self
+                .text()
+                .chars()
+                .next()
+                .is_some_and(|c| APOSTROPHES.contains(&c))
+    }
+
+    // Note that this function is very expensive.
+    #[inline]
+    pub fn num_syllables(&self) -> usize {
+        syllabify_el(self.text()).len()
+    }
+
+    /// Returns `true` if this `token` conforms an abbreviation which fulfills the role of
+    /// an ellipsis. Ex. κ.τ.λ., κτλ, κτλ.
+    pub fn is_elliptic_abbreviation(&self) -> bool {
+        // The last dot must be removed because of our tokenizing logic.
+        // Includes common typos like κ.λ.π. instead of κ.λπ.
+        const ELLIPTIC_ABBREVIATION: [&str; 10] = [
+            "κ.τ.λ", "κτλ", "κ.λπ", "κ.λ.π", "κ.τ.ό", "κ.τ.ο", "κ.τ.ρ", "κ.τ.τ", "κ.ά", "κ.α",
+        ];
+
+        ELLIPTIC_ABBREVIATION.contains(&self.text())
+    }
+}
+
+enum SplitKind {
+    Word,
+    Whitespace,
+}
+
+// Custom split logic.
+// * "Hello   world" > ["Hello", "   ", "world"]
+fn split_whitespace(text: &str) -> impl Iterator<Item = (SplitKind, &str)> {
+    let mut offset = 0;
+    let len = text.len();
+
+    std::iter::from_fn(move || {
+        if offset >= len {
+            return None;
+        }
+
+        let s = &text[offset..];
+        let mut iter = s.char_indices();
+        let (_, first_ch) = iter.next()?;
+        let is_ws = first_ch.is_whitespace();
+
+        let mut split_at = s.len();
+        for (i, ch) in iter {
+            if ch.is_whitespace() != is_ws {
+                split_at = i;
+                break;
+            }
+        }
+
+        let chunk = &s[..split_at];
+        offset += split_at;
+
+        let kind = if is_ws {
+            SplitKind::Whitespace
+        } else {
+            SplitKind::Word
+        };
+
+        Some((kind, chunk))
+    })
+}
+
+/// Build a `Doc` from a source `text`.
+///
+// Notes:
+// * numbers are treated as punctuation (not ideal?)
+// * marginal (~10%) performance gains can be obtained by using the Logos library
+//   with unsafe allowed to replace the whitespace splitting logic. Without unsafe
+//   the performance seems identical. It is probably not worth the dependency.
 pub fn tokenize(text: &str) -> Doc {
     let mut end = 0;
     let mut index = 0;
     let mut tokens = Vec::new();
 
-    for w in text.split_inclusive(|c: char| c.is_whitespace()) {
+    for (kind, slice) in split_whitespace(text) {
         let start = end;
-        end = start + w.len();
+        end = start + slice.len();
 
-        let non_whitespace = w.trim_end();
+        match kind {
+            SplitKind::Whitespace => {
+                let token = Token::new(slice, index, start, TokenKind::Whitespace);
+                tokens.push(token);
+                index += 1;
+            }
+            SplitKind::Word => {
+                let (lpunct, word, rpunct) = grac::split_punctuation(slice);
 
-        // Empty non_whitespace quick exit case.
-        // Treat it as NOT punct since it is only whitespace.
-        if non_whitespace.is_empty() {
-            let range = TextRange::new(start, end);
-            let token = Token::new("", w, index, range, false, false);
-            tokens.push(token);
-            index += 1;
-            continue;
-        }
+                if !lpunct.is_empty() {
+                    let range = TextRange::new(start, start + lpunct.len());
+                    let kind = TokenKind::Punctuation;
+                    let chunk = &text[range.start()..range.end()];
+                    let token = Token::new(chunk, index, start, kind);
+                    tokens.push(token);
+                    index += 1;
+                }
 
-        let (lpunct, word, rpunct) = split_punctuation(non_whitespace);
+                if !word.is_empty() {
+                    debug_assert!(!word.contains(|c: char| c.is_whitespace()));
+                    let start_at = start + lpunct.len();
+                    let len = word.len();
+                    let range = TextRange::new(start_at, start_at + len);
+                    let chunk = &text[range.start()..range.end()];
+                    let kind = if is_greek_word(chunk) {
+                        TokenKind::GreekWord
+                    } else {
+                        TokenKind::Word
+                    };
+                    let token = Token::new(chunk, index, start_at, kind);
+                    tokens.push(token);
+                    index += 1;
+                }
 
-        if !lpunct.is_empty() {
-            let range = TextRange::new(start, start + lpunct.len());
-            let token = Token::new(lpunct, "", index, range, true, false);
-            tokens.push(token);
-            index += 1;
-        }
-
-        if !word.is_empty() {
-            // May be empty
-            let whitespace = if rpunct.is_empty() {
-                &w[lpunct.len() + word.len() + rpunct.len()..]
-            } else {
-                ""
-            };
-
-            let start_at = start + lpunct.len();
-            let greek = is_greek_word(word);
-            let range = TextRange::new(start_at, start_at + word.len() + whitespace.len());
-            let token = Token::new(word, whitespace, index, range, false, greek);
-            tokens.push(token);
-            index += 1;
-        }
-
-        if !rpunct.is_empty() {
-            // May be empty
-            let whitespace = &w[lpunct.len() + word.len() + rpunct.len()..];
-
-            let start_at = start + lpunct.len() + word.len();
-            let range = TextRange::new(start_at, start_at + whitespace.len() + rpunct.len());
-            let token = Token::new(rpunct, whitespace, index, range, true, false);
-            tokens.push(token);
-            index += 1;
+                if !rpunct.is_empty() {
+                    let start_at = start + lpunct.len() + word.len();
+                    let range = TextRange::new(start_at, start_at + rpunct.len());
+                    let kind = TokenKind::Punctuation;
+                    let chunk = &text[range.start()..range.end()];
+                    let token = Token::new(chunk, index, start_at, kind);
+                    tokens.push(token);
+                    index += 1;
+                }
+            }
         }
     }
 
-    tokens
-}
-
-/// Macro to test a rule that requires tokenizing.
-#[macro_export]
-macro_rules! test_rule {
-    ($name:ident, $rule_fn:expr, $text:expr, $expected:expr) => {
-        #[test]
-        fn $name() {
-            let text = $text;
-            let doc = tokenize(text);
-            let mut diagnostics = Vec::new();
-            for token in &doc {
-                $rule_fn(&token, &doc, &mut diagnostics);
-            }
-            assert_eq!(diagnostics.is_empty(), $expected, "(text: {text})");
-        }
-    };
-}
-
-/// Macro to test a rule that DOES NOT require tokenizing.
-#[macro_export]
-macro_rules! test_rule_no_token {
-    ($name:ident, $rule_fn:expr, $text:expr, $expected:expr) => {
-        #[test]
-        fn $name() {
-            let text = $text;
-            let mut diagnostics = Vec::new();
-            $rule_fn(&text, &mut diagnostics);
-            assert_eq!(diagnostics.is_empty(), $expected, "(text: {text})");
-        }
-    };
+    Doc { src: text, tokens }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn splitting(text: &str, expected: &[&str]) {
-        let received: Vec<_> = tokenize(text).iter().map(|token| token.text).collect();
+    fn split(text: &str, expected: &[&str]) {
+        let doc = tokenize(text);
+        let received: Vec<_> = doc.iter().map(super::Token::text).collect();
         assert_eq!(received, expected);
     }
 
     #[test]
-    fn test_splitting() {
-        splitting("Καλημέρα, κόσμε", &["Καλημέρα", ",", "κόσμε"]);
-        splitting("την «ξεκρέμασε", &["την", "«", "ξεκρέμασε"]);
-        splitting(
+    fn test_splitting_ascii() {
+        split("Hello world!  ", &["Hello", " ", "world", "!", "  "]);
+    }
+
+    #[test]
+    fn test_splitting_non_ascii_ws() {
+        split("Hello\u{3000}world!", &["Hello", "\u{3000}", "world", "!"]);
+    }
+
+    #[test]
+    fn test_splitting_greek1() {
+        split("Καλημέρα, κόσμε", &["Καλημέρα", ",", " ", "κόσμε"]);
+        split("το: Φέγγαρι", &["το", ":", " ", "Φέγγαρι"]);
+    }
+
+    #[test]
+    fn test_splitting_greek2() {
+        split("την «ξεκρέμασε", &["την", " ", "«", "ξεκρέμασε"]);
+        split(
             " την  «   ξεκρέμασε ",
-            &["", "την", "", "«", "", "", "ξεκρέμασε"],
+            &[" ", "την", "  ", "«", "   ", "ξεκρέμασε", " "],
         );
-        splitting("το: Φέγγαρι", &["το", ":", "Φέγγαρι"]);
+    }
+
+    #[test]
+    fn test_splitting_newlone() {
+        split("α\nβ", &["α", "\n", "β"]);
+        split("α \nβ", &["α", " \n", "β"]);
+        split("α\n β", &["α", "\n ", "β"]);
+        split("α \n β", &["α", " \n ", "β"]);
     }
 
     #[test]
     fn test_splitting_apostrophe() {
-        splitting("όλ' αυτά", &["όλ", "'", "αυτά"]);
-        splitting("ἄρ᾽ Ἀθήνας", &["ἄρ", "᾽", "Ἀθήνας"]);
+        split("όλ' αυτά", &["όλ", "'", " ", "αυτά"]);
+        split("ἄρ᾽ Ἀθήνας", &["ἄρ", "᾽", " ", "Ἀθήνας"]);
     }
 
     #[test]
-    fn test_tokenization_ascii() {
-        let text = "Hello world!  ";
-        //          01234567890123
-        let doc = tokenize(text);
-
-        let expected = vec![
-            Token {
-                text: "Hello",
-                whitespace: " ",
-                index: 0,
-                range: TextRange::new(0, 6),
-                punct: false,
-                greek: false,
-            },
-            Token {
-                text: "world",
-                whitespace: "",
-                index: 1,
-                range: TextRange::new(6, 11),
-                punct: false,
-                greek: false,
-            },
-            Token {
-                text: "!",
-                whitespace: " ",
-                index: 2,
-                range: TextRange::new(11, 13),
-                punct: true,
-                greek: false,
-            },
-            Token {
-                text: "",
-                whitespace: " ",
-                index: 3,
-                range: TextRange::new(13, 14),
-                punct: false,
-                greek: false,
-            },
-        ];
-
-        assert_eq!(doc, expected);
+    fn test_splitting_single_inner_punct() {
+        split("σ'αυτόν", &["σ'αυτόν"]);
     }
 
     #[test]
-    fn test_tokenization_non_ascii() {
-        let text = "Καλημέρα, κόσμε";
-        //          0123456789012345
-        //          024681356792468
-        let doc = tokenize(text);
-
-        let expected = vec![
-            Token {
-                text: "Καλημέρα",
-                whitespace: "",
-                index: 0,
-                range: TextRange::new(0, 16),
-                punct: false,
-                greek: true,
-            },
-            Token {
-                text: ",",
-                whitespace: " ",
-                index: 1,
-                range: TextRange::new(16, 18),
-                punct: true,
-                greek: false,
-            },
-            Token {
-                text: "κόσμε",
-                whitespace: "",
-                index: 2,
-                range: TextRange::new(18, 28),
-                punct: false,
-                greek: true,
-            },
-        ];
-
-        assert_eq!(doc, expected);
+    fn test_splitting_double_inner_punct() {
+        split("του|-πουλος", &["του|-πουλος"]);
     }
 
     #[test]
-    fn test_tokenization_whitespace() {
-        let text = "Hello   \n";
-        let doc = tokenize(text);
-
-        let expected = vec![
-            Token {
-                text: "Hello",
-                whitespace: " ",
-                ..Token::default()
-            },
-            Token {
-                text: "",
-                whitespace: " ",
-                ..Token::default()
-            },
-            Token {
-                text: "",
-                whitespace: " ",
-                ..Token::default()
-            },
-            Token {
-                text: "",
-                whitespace: "\n",
-                ..Token::default()
-            },
-        ];
-
-        eprintln!("{:?}", doc);
-
-        for (i, (rec, exp)) in doc.iter().zip(expected.iter()).enumerate() {
-            assert_eq!(rec.text, exp.text);
-            assert_eq!(
-                rec.whitespace, exp.whitespace,
-                "Mismatch at index {}: whitespace field mismatch\n  expected: {:?}\n    actual: {:?}",
-                i, exp.whitespace, rec.whitespace
-            );
+    fn test_tokenization_text() {
+        let variations = ["α 'β", "α ' β", "α' β"];
+        for text in variations {
+            let doc = tokenize(text);
+            let filtered = doc.iter().filter(|t| t.kind != TokenKind::Whitespace);
+            let expected = ["α", "'", "β"];
+            for (rec, exp) in filtered.zip(expected.iter()) {
+                eprintln!("'{}' '{:?}'\n- {:?}", rec.text(), rec.range(), rec,);
+                assert_eq!(rec.text(), *exp);
+            }
         }
     }
 }

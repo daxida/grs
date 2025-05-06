@@ -1,7 +1,6 @@
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
 use crate::registry::Rule;
-use crate::tokenizer::Token;
+use crate::tokenizer::{Doc, Token};
 use grac::is_vowel_el;
 
 #[rustfmt::skip]
@@ -23,42 +22,27 @@ fn remove_last_char(s: &str) -> &str {
 }
 
 fn starts_with_vowel_or_plosive(token: &Token) -> bool {
-    token.text.chars().next().is_some_and(|ch| {
+    token.text().chars().next().is_some_and(|ch| {
         PLOSIVE_CLUSTERS
             .iter()
-            .any(|&prefix| token.text.starts_with(prefix))
+            .any(|&prefix| token.text().starts_with(prefix))
             || is_vowel_el(ch)
     })
 }
 
-// Used at some point to get the next token in both rules in this module.
-// Introduces quite some false positives in exchange for more coverage if
-// the text has html formatting (i.e. wikipedia)
-#[allow(unused)]
-fn get_next_non_punct_token<'a>(token: &'a Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
-    let mut index = token.index + 1;
-    loop {
-        let ntoken = doc.get(index)?;
-        if !ntoken.punct || ntoken.text.chars().all(|c| c.is_ascii_digit()) {
-            return Some(ntoken);
-        }
-        index += 1;
-    }
-}
-
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if CANDIDATES_REM.contains(&token.text) {
+    if CANDIDATES_REM.contains(&token.text()) {
         // Treat archaic construction "εις την" as valid
-        if token.text == "την" {
-            if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
-                if ptoken.text == "εις" {
+        if token.text() == "την" {
+            if let Some(ptoken) = doc.prev_token_not_whitespace(token) {
+                if ptoken.text() == "εις" {
                     return None;
                 }
             }
         }
 
-        if let Some(ntoken) = doc.get(token.index + 1) {
-            if ntoken.greek && !starts_with_vowel_or_plosive(ntoken) {
+        if let Some(ntoken) = doc.next_token_not_whitespace(token) {
+            if ntoken.is_greek_word() && !starts_with_vowel_or_plosive(ntoken) {
                 return Some(());
             }
         }
@@ -68,35 +52,36 @@ fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
 
 pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
     if remove_final_n_opt(token, doc).is_some() {
+        let replacement = remove_last_char(token.text()).to_string();
         diagnostics.push(Diagnostic {
             kind: Rule::RemoveFinalN,
-            range: token.range_text(),
+            range: token.range(),
             fix: Some(Fix {
-                replacement: format!("{}{}", remove_last_char(token.text), token.whitespace),
-                range: token.range,
+                replacement,
+                range: token.range(),
             }),
         });
     }
 }
 
 fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if CANDIDATES_ADD.contains(&token.text) {
+    if CANDIDATES_ADD.contains(&token.text()) {
         // Treat archaic construction "εν τη" as valid
-        if token.text == "τη" {
-            if let Some(ptoken) = doc.get(token.index.saturating_sub(1)) {
-                if ptoken.text == "εν" {
+        if token.text() == "τη" {
+            if let Some(ptoken) = doc.prev_token_not_whitespace(token) {
+                if ptoken.text() == "εν" {
                     return None;
                 }
             }
         }
 
-        let ntoken = doc.get(token.index + 1)?;
+        let ntoken = doc.next_token_not_whitespace(token)?;
         if starts_with_vowel_or_plosive(ntoken) {
             // To avoid false positives in case of formal expressions
             // with dative (Ex. επί τη εμφανίσει OR πρώτος τη τάξει),
             // we return None in case ntoken ends with ει.
             // This may cause false negatives, which are preferable anyway.
-            return if ntoken.text.ends_with("ει") {
+            return if ntoken.text().ends_with("ει") {
                 None
             } else {
                 Some(())
@@ -111,10 +96,10 @@ pub fn add_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) 
     if add_final_n_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::AddFinalN,
-            range: token.range_text(),
+            range: token.range(),
             fix: Some(Fix {
-                replacement: format!("{}ν{}", token.text, token.whitespace),
-                range: token.range,
+                replacement: format!("{}ν", token.text()),
+                range: token.range(),
             }),
         });
     }
@@ -124,7 +109,6 @@ pub fn add_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) 
 mod tests {
     use super::*;
     use crate::test_rule;
-    use crate::tokenizer::tokenize;
 
     macro_rules! test_add {
         ($name:ident, $text:expr, $expected:expr) => {

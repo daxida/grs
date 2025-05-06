@@ -4,10 +4,8 @@
 // * και το κτήριο του, παλαιού πλέον, Μουσείου Ακρόπολης
 
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
-use crate::doc::followed_by_elliptic_abbreviation;
 use crate::registry::Rule;
-use crate::tokenizer::Token;
+use crate::tokenizer::{Doc, Token};
 use grac::Diacritic;
 use grac::add_acute_at;
 use grac::constants::{APOSTROPHES, MULTIPLE_PRONUNCIATION};
@@ -25,8 +23,7 @@ pub const PRONOUNS_LOWERCASE: [&str; 15] = [
     "μου", "σου", "του", "της", // Genitive Singular
 ];
 
-/// Punctuation that prevents a positive diagnostic of an error on the
-/// second token.
+/// Punctuation that prevents a positive diagnostic of an error on the second token.
 ///
 /// From \" onward they come from testing against the wikidump,
 /// and, even if rare, they make sense to keep.
@@ -67,7 +64,7 @@ const SE_TO_COMPOUNDS: [&str; 10] = [
 /// the word (since the word itself may very well not be in the table).
 ///
 /// Example: lemmatize("παλιοκατσάριαν") == "κατσάρια"
-#[inline(always)]
+#[inline]
 fn lemmatize(s: &str) -> &str {
     s.trim_end_matches('ν').trim_start_matches("παλιο")
 }
@@ -91,30 +88,31 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // CEx. Όποιος μου τον φέρει...
 
     // For an error to exist, the next token must be a pronoun
-    let ntoken = doc.get(token.index + 1)?;
-    if ntoken.punct || !PRONOUNS_LOWERCASE.contains(&ntoken.text) {
+    // let ntoken = doc.get(token.index + 1)?;
+    let ntoken = doc.next_token_not_whitespace(token)?;
+    if ntoken.is_punctuation() || !PRONOUNS_LOWERCASE.contains(&ntoken.text()) {
         return None;
     }
 
-    if MULTIPLE_PRONUNCIATION.contains(&token.text)
+    if MULTIPLE_PRONUNCIATION.contains(&token.text())
         // We do not deal with diminutives at the moment.
-        || token.text.ends_with("άκια")
-        || token.text.ends_with("ούλια")
+        || token.text().ends_with("άκια")
+        || token.text().ends_with("ούλια")
         // See also `crate::rules::accents::multisyllable_not_accented_opt`
-        || token.text.contains(['[', ']'])
+        || token.text().contains(['[', ']'])
     {
         return None;
     }
 
-    let nntoken = doc.get(token.index + 2)?;
-    if nntoken.punct {
-        let fst_char = nntoken.text.chars().next()?;
+    let nntoken = doc.next_token_not_whitespace(ntoken)?;
+    if nntoken.is_punctuation() {
+        let fst_char = nntoken.text().chars().next()?;
 
         // The token must not start with ellipsis, quotation marks etc.
         // But a period, a comma, a question mark etc. should indicate an error.
         if !STOKEN_AMBIGUOUS_INITIAL_PUNCT
             .iter()
-            .any(|punct| nntoken.text.starts_with(punct))
+            .any(|punct| nntoken.text().starts_with(punct))
             && !APOSTROPHES.contains(&fst_char)
             // Numbers too should be ignored:
             // Ex. "ανακαλύφθηκε το 1966" is correct.
@@ -123,18 +121,18 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
             return Some(());
         }
     // If it is not punctuation...
-    } else if STOKEN_SEPARATOR_WORDS.contains(&nntoken.text)
+    } else if STOKEN_SEPARATOR_WORDS.contains(&nntoken.text())
         // > επιφυλακτικότητα της της στερούσε
-        || ntoken.text == nntoken.text
-        || SE_TO_COMPOUNDS.contains(&nntoken.text)
-        || followed_by_elliptic_abbreviation(nntoken, doc)
+        || ntoken.text() == nntoken.text()
+        || SE_TO_COMPOUNDS.contains(&nntoken.text())
+        || nntoken.is_elliptic_abbreviation()
     {
         return Some(());
     // Case να.
     // Ex. Άφησε τον να βρει μόνος του...
     //
     // The only two pronouns that introduce ambiguity are το & του
-    } else if nntoken.text == "να" && ntoken.text != "το" && ntoken.text != "του" {
+    } else if nntoken.text() == "να" && ntoken.text() != "το" && ntoken.text() != "του" {
         return Some(());
     // Case πως (but not πώς!).
     // Ex.  βεβαίωσε τον πως μόνος ο δρόμος...
@@ -142,16 +140,15 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     //
     // We exclude το & του to avoid false positive when πώς is mispelled as πως.
     // CEx. ...να δει και στην πραγματικότητα το πως δουλεύει.
-    } else if nntoken.text == "πως" && !["το", "του"].contains(&ntoken.text) {
+    } else if nntoken.text() == "πως" && !["το", "του"].contains(&ntoken.text()) {
         return Some(());
     }
 
     // Testing
     // > δίνοντας μου μια μπατσιά στη ράχη
-    // if ["μου", "σου", "του", "της", "μας", "σας"].contains(&ntoken.text)
-    //     && ["μια", "ένα", "έναν", "δυο", "δύο", "τρία", "τρια"].contains(&nntoken.text)
+    // if ["μου", "σου", "του", "της", "μας", "σας"].contains(&ntoken.text())
+    //     && ["μια", "ένα", "έναν", "δυο", "δύο", "τρία", "τρια"].contains(&nntoken.text())
     // {
-    //     // eprintln!("* '{}'", token.token_ctx(doc));
     //     return Some(());
     // }
 
@@ -159,15 +156,16 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
 }
 
 pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if missing_double_accents_opt(token, doc).is_some()
-        && is_proparoxytone_strict(lemmatize(token.text))
+    if token.is_greek_word()
+        && missing_double_accents_opt(token, doc).is_some()
+        && is_proparoxytone_strict(lemmatize(token.text()))
     {
         diagnostics.push(Diagnostic {
             kind: Rule::MissingDoubleAccents,
-            range: token.range_text(),
+            range: token.range(),
             fix: Some(Fix {
-                replacement: format!("{}{}", add_acute_at(token.text, 1), token.whitespace),
-                range: token.range,
+                replacement: add_acute_at(token.text(), 1),
+                range: token.range(),
             }),
         });
     }
@@ -177,61 +175,6 @@ pub fn missing_double_accents(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
 mod tests {
     use super::*;
     use crate::test_rule;
-    use crate::tokenizer::tokenize;
-
-    #[test]
-    fn test_tokens_without_error() {
-        let doc = vec![
-            Token {
-                text: "άνθρωπος",
-                ..Token::default()
-            },
-            Token {
-                text: ".",
-                punct: true,
-                ..Token::default()
-            },
-        ];
-        let mut diagnostics = Vec::new();
-        missing_double_accents(&doc[0], &doc, &mut diagnostics);
-        assert!(diagnostics.is_empty());
-    }
-
-    #[test]
-    fn test_tokens_with_error() {
-        let doc = vec![
-            Token {
-                text: "άνθρωπος",
-                ..Token::default()
-            },
-            Token {
-                text: "του",
-                ..Token::default()
-            },
-            Token {
-                text: ".",
-                punct: true,
-                ..Token::default()
-            },
-        ];
-        let mut diagnostics = Vec::new();
-        missing_double_accents(&doc[0], &doc, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-    }
-
-    #[test]
-    fn test_range() {
-        let text = "άνθρωπος του.";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        missing_double_accents(&doc[0], &doc, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-
-        let diagnostic = &diagnostics[0];
-        let range = diagnostic.range;
-        assert_eq!(range.start(), 0);
-        assert_eq!(range.end(), "άνθρωπος".len());
-    }
 
     macro_rules! test_mda {
         ($name:ident, $text:expr, $expected:expr) => {
@@ -285,6 +228,14 @@ mod tests {
     test_mda!(punct1, "τα υπόλοιπα ρήματα σε -άω", true);
     // Happens in dictionaries
     test_mda!(punct2, "ένας μόνο ξέφυγε ολότελα την ~ ως", true);
+
+    // Whitespace
+    test_mda!(whitespace1, "σύμφωνα με\n", true); // no next token
+    test_mda!(whitespace2, "σύμφωνα με\n.", false);
+    test_mda!(whitespace3, "σύμφωνα με\n\n.", false);
+    test_mda!(whitespace4, "σύμφωνα με ", true);
+    test_mda!(whitespace5, "σύμφωνα με .", false);
+    test_mda!(whitespace6, "σύμφωνα με  .", false);
 
     // Regression
     test_mda!(reg1, "Κάθε κίνηση που κάνετε μου κοστίζει ένα...", true);

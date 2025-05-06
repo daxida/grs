@@ -33,6 +33,11 @@ const OUTDATED_SPELLINGS_MULTIPLE: [(&str, &str); 20] = [
 ];
 
 /// Outdated spelling of strings.
+///
+/// # Panics
+///
+/// Panics on the first call if any pattern in `OUTDATED_SPELLINGS_MULTIPLE`
+/// is invalid and cannot be compiled into an Aho-Corasick automaton.
 //
 // Some caveats:
 // - Without regex or some more logic, this is agnostic of word boundaries

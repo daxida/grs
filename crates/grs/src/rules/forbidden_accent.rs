@@ -1,11 +1,8 @@
 use crate::diagnostic::Diagnostic;
-use crate::doc::Doc;
-use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
-use crate::tokenizer::Token;
-use grac::conc;
-use grac::{Diacritic, Merge, has_diacritic, is_greek_char, syllabify_el_mode};
+use crate::tokenizer::{Doc, Token};
+use grac::{Diacritic, Merge, conc, has_diacritic, is_greek_char, syllabify_el_mode};
 
 // https://el.wiktionary.org/wiki/τίς
 const TIS_VARIANTS: [&str; 13] = [
@@ -36,7 +33,6 @@ const ANCIENT_EINAI: [&str; 14] = [
 // * φατε may conflict with φάω
 #[rustfmt::skip]
 const ANCIENT_LEO: [&str; 7] = [
-    // And their monotonic counterparts
     "φημι", "φασι", "φασιν", "φησι", "φησιν", "φαμεν", "φατε",
 ];
 
@@ -99,15 +95,17 @@ fn diacritic_pos(s: &str, diacritic: char, merge: Merge) -> Vec<usize> {
 }
 
 fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
+    debug_assert!(token.is_greek_word());
+
     // Fast discard if possible (10 bytes ~ 5 Greek chars)
     //
     // 12 bytes should be fine for accents over the antepenult, but
     // it is too short for double accents in wrong position. Cf. ρούχά του
-    if token.text.len() < 10 || !token.text.chars().all(is_greek_char) {
+    if token.text().len() < 10 || !token.text().chars().all(is_greek_char) {
         return None;
     }
 
-    let pos = diacritic_pos(token.text, Diacritic::ACUTE, Merge::Every);
+    let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Every);
 
     // accent before antepenult
     if pos.last().is_some_and(|pos| *pos > 3) {
@@ -120,28 +118,18 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
         //
         // We recompute the pos to not get a false positive on synizesis.
         // It should be quite cheap since this branch is quite rare already.
-        let pos = diacritic_pos(token.text, Diacritic::ACUTE, Merge::Never);
+        let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Never);
         if pos != [1, 3] {
             return Some(());
         }
 
         // Compare against the first greek token found
-        let mut idx = token.index + 1;
-        while let Some(ntoken) = doc.get(idx) {
-            if ntoken.greek {
-                let res = !ALLOWED_WORDS_AFTER_DOUBLE_ACCENT.contains(&ntoken.text);
-                // if res {
-                //     eprintln!(
-                //         "{:?} {} || {} || {}",
-                //         pos,
-                //         token.token_ctx(doc),
-                //         token.text,
-                //         ntoken.text
-                //     );
-                // }
-                return if res { Some(()) } else { None };
-            }
-            idx += 1;
+        if let Some(ntoken) = doc.next_token_greek_word(token) {
+            return if ALLOWED_WORDS_AFTER_DOUBLE_ACCENT.contains(&ntoken.text()) {
+                None
+            } else {
+                Some(())
+            };
         }
     }
 
@@ -149,11 +137,10 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
 }
 
 pub fn forbidden_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if forbidden_accent_opt(token, doc).is_some() {
-        let range = TextRange::new(token.range.start(), token.range_text().end());
+    if token.is_greek_word() && forbidden_accent_opt(token, doc).is_some() {
         diagnostics.push(Diagnostic {
             kind: Rule::ForbiddenAccent,
-            range,
+            range: token.range(),
             fix: None,
         });
     }
@@ -163,7 +150,6 @@ pub fn forbidden_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnost
 mod tests {
     use super::*;
     use crate::test_rule;
-    use crate::tokenizer::tokenize;
 
     macro_rules! test_fa {
         ($name:ident, $text:expr, $expected:expr) => {

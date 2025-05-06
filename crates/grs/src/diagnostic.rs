@@ -1,4 +1,5 @@
-use crate::{range::TextRange, registry::Rule};
+use crate::range::TextRange;
+use crate::registry::Rule;
 
 // We do not use Edit since our replacement logic is much simpler,
 // usually consisting of modifying solely substrings.

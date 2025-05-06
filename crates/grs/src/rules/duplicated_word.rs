@@ -1,12 +1,8 @@
 use crate::diagnostic::Diagnostic;
-use crate::doc::Doc;
 use crate::range::TextRange;
 use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
-use crate::tokenizer::Token;
-
-// NOTE: Will not detect duplication if they are of different casing.
-// Ex. Πρώτα πρώτα
+use crate::tokenizer::{Doc, Token};
 
 // Based on common expressions
 #[rustfmt::skip]
@@ -30,22 +26,22 @@ const DUPLICATED_WORD_EXCEPTIONS: [&str; 41] = [
 ];
 
 fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
-    debug_assert!(!token.punct && token.greek);
+    debug_assert!(!token.is_punctuation());
 
     // Ignore:
     // * empty text
     // * one-letter duplications (cf. s p a c i n g) (2 bytes)
-    if token.text.len() < 3
-        || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text)
-        // Should also add pronouns and not open this can of worms:
-        // https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
-        || PRONOUNS_LOWERCASE.contains(&token.text)
+    // * pronouns (ex. η μητέρα του του 'μείνε)
+    //   cf. https://www.babiniotis.gr/lexilogika/leksilogika/leitourgikos-tonismos-sto-monotoniko/
+    if token.text().len() < 3
+        || DUPLICATED_WORD_EXCEPTIONS.contains(&token.text())
+        || PRONOUNS_LOWERCASE.contains(&token.text())
     {
         return None;
     }
 
-    if let Some(ntoken) = doc.get(token.index + 1) {
-        if token.text == ntoken.text {
+    if let Some(ntoken) = doc.next_token_not_whitespace(token) {
+        if token.text() == ntoken.text() {
             return Some(ntoken);
         }
     }
@@ -53,20 +49,20 @@ fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>>
     None
 }
 
-/// Detect duplicated word
+/// Detect duplicated words.
 ///
-/// No fixes until I decide what to do with consecutive duplications:
-/// - το το το
+/// Unfixable: removing the duplicated word may not be the intended approach,
+/// sometimes what is needed is extra punctuation:
+/// * '— Τζωρτζ Τζωρτζ.' > '— Τζωρτζ, Τζωρτζ!'
 ///
-/// Don't exclude pronouns since it is recommended to accent one of them.
-/// Ex.  η μητέρα του του 'μείνε
+/// It is also not clear what to do with consecutive duplications:
+/// * το το το
 ///
-/// Unfixable: removing the duplicated word may not be the intended
-/// approach, sometimes what is needed is extra punctuation:
-/// '— Τζωρτζ Τζωρτζ.' > '— Τζωρτζ, Τζωρτζ!'
+/// Notes:
+/// * does not detect duplication if they are of different casing (ex. Πρώτα πρώτα).
 pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
     if let Some(ntoken) = duplicated_word_opt(token, doc) {
-        let range = TextRange::new(token.range.start(), ntoken.range_text().end());
+        let range = TextRange::new(token.range().start(), ntoken.range().end());
         diagnostics.push(Diagnostic {
             kind: Rule::DuplicatedWord,
             range,
@@ -79,7 +75,6 @@ pub fn duplicated_word(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnosti
 mod tests {
     use super::*;
     use crate::test_rule;
-    use crate::tokenizer::tokenize;
 
     macro_rules! test_dw {
         ($name:ident, $text:expr, $expected:expr) => {

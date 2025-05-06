@@ -1,10 +1,11 @@
+// It is frequent to see (newspapers, etc.) the French rule where the first word of a
+// sentence does not take accent if it happened to be on it's first letter (a vowel).
+// Ex. Ηταν μόλις 31…
+
 use crate::diagnostic::{Diagnostic, Fix};
-use crate::doc::Doc;
-use crate::doc::is_abbreviation_or_ends_with_dot;
 use crate::registry::Rule;
-use crate::tokenizer::Token;
-use grac::has_any_diacritic;
-use grac::{add_acute_at, is_vowel_el};
+use crate::tokenizer::{Doc, Token};
+use grac::{add_acute_at, has_any_diacritic, is_vowel_el};
 
 /// The first character is uppercase and the rest are lowercase.
 fn is_capitalized(s: &str) -> bool {
@@ -18,16 +19,13 @@ fn is_capitalized(s: &str) -> bool {
     false
 }
 
-// It is frequent to see in newspaper the french rule where
-// the first word of a sentence does not take accent if it should
-// have gone to its first letter (therefore a vowel).
-// Ex. Ηταν μόλις 31…
 fn missing_accent_capital_opt(token: &Token, doc: &Doc) -> Option<()> {
-    if is_capitalized(token.text)
-        && !has_any_diacritic(token.text)
+    if is_capitalized(token.text())
+        // This is not some "has_acute" method to avoid false positives in polytonic
+        && !has_any_diacritic(token.text()) 
         // We know there is at least one char based on is_capitalized
-        && is_vowel_el(token.text.chars().next().unwrap())
-        && !is_abbreviation_or_ends_with_dot(token, doc)
+        && is_vowel_el(token.text().chars().next().unwrap())
+        && !doc.is_abbreviation_or_ends_with_dot(token)
     {
         Some(())
     } else {
@@ -37,19 +35,14 @@ fn missing_accent_capital_opt(token: &Token, doc: &Doc) -> Option<()> {
 
 pub fn missing_accent_capital(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
     if missing_accent_capital_opt(token, doc).is_some() {
-        let n_syllables = token.syllables().len();
+        let n_syllables = token.num_syllables();
         if n_syllables > 1 {
             diagnostics.push(Diagnostic {
                 kind: Rule::MissingAccentCapital,
-                range: token.range_text(),
+                range: token.range(),
                 fix: Some(Fix {
-                    replacement: format!(
-                        "{}{}",
-                        // The accent should go to the first syllable
-                        add_acute_at(token.text, n_syllables),
-                        token.whitespace
-                    ),
-                    range: token.range,
+                    replacement: add_acute_at(token.text(), n_syllables),
+                    range: token.range(),
                 }),
             });
         }
@@ -60,21 +53,6 @@ pub fn missing_accent_capital(token: &Token, doc: &Doc, diagnostics: &mut Vec<Di
 mod tests {
     use super::*;
     use crate::test_rule;
-    use crate::tokenizer::tokenize;
-
-    #[test]
-    fn test_range() {
-        let text = "Αλλο ";
-        let doc = tokenize(text);
-        let mut diagnostics = Vec::new();
-        missing_accent_capital(&doc[0], &doc, &mut diagnostics);
-        assert!(!diagnostics.is_empty());
-
-        let diagnostic = &diagnostics[0];
-        let range = diagnostic.range;
-        assert_eq!(range.start(), 0);
-        assert_eq!(range.end(), "Αλλο".len());
-    }
 
     macro_rules! test_mac {
         ($name:ident, $text:expr, $expected:expr) => {

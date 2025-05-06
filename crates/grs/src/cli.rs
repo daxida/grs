@@ -4,6 +4,7 @@ use clap::builder::{PossibleValue, TypedValueParser};
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 
+// Cf. https://github.com/astral-sh/ruff/blob/1bdb22c13972b3a3dc9cb4ef31fbf37db051dd1c/crates/ruff/src/args.rs#L185
 #[derive(Parser, Debug)]
 #[command(name = "grs", about = "Grs: a rule-based spell checker for Greek.")]
 #[allow(clippy::struct_excessive_bools)]
