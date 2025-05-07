@@ -2,7 +2,7 @@ use crate::diagnostic::Diagnostic;
 use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::{Doc, Token};
-use grac::{Diacritic, Merge, conc, has_diacritic, is_greek_char, syllabify_el_mode};
+use grac::{Diacritic, Merge, conc, has_diacritic, is_greek_char, syllabify_with_merge};
 
 // https://el.wiktionary.org/wiki/τίς
 const TIS_VARIANTS: [&str; 13] = [
@@ -80,7 +80,7 @@ const ALLOWED_WORDS_AFTER_DOUBLE_ACCENT: [&str; 62] = conc!(
 // Rewrite of grac::diacritic_pos that forces synizesis to prevent
 // many false positives.
 fn diacritic_pos(s: &str, diacritic: char, merge: Merge) -> Vec<usize> {
-    syllabify_el_mode(s, merge)
+    syllabify_with_merge(s, merge)
         .iter()
         .rev()
         .enumerate()

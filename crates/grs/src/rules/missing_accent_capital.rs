@@ -5,7 +5,7 @@
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
-use grac::{add_acute_at, has_any_diacritic, is_vowel_el};
+use grac::{add_acute_at, has_any_diacritic, is_vowel};
 
 /// The first character is uppercase and the rest are lowercase.
 fn is_capitalized(s: &str) -> bool {
@@ -24,7 +24,7 @@ fn missing_accent_capital_opt(token: &Token, doc: &Doc) -> Option<()> {
         // This is not some "has_acute" method to avoid false positives in polytonic
         && !has_any_diacritic(token.text()) 
         // We know there is at least one char based on is_capitalized
-        && is_vowel_el(token.text().chars().next().unwrap())
+        && is_vowel(token.text().chars().next().unwrap())
         && !doc.is_abbreviation_or_ends_with_dot(token)
     {
         Some(())

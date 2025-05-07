@@ -1,7 +1,7 @@
 use crate::range::TextRange;
 use colored::Colorize;
 use grac::constants::APOSTROPHES;
-use grac::{is_greek_word, syllabify_el};
+use grac::{is_greek_word, syllabify};
 use std::ops::{Deref, DerefMut};
 
 #[cfg(feature = "serde")]
@@ -257,7 +257,7 @@ impl Token<'_> {
     // Note that this function is very expensive.
     #[inline]
     pub fn num_syllables(&self) -> usize {
-        syllabify_el(self.text()).len()
+        syllabify(self.text()).len()
     }
 
     /// Returns `true` if this `token` conforms an abbreviation which fulfills the role of

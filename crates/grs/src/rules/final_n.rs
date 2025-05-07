@@ -1,7 +1,7 @@
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::tokenizer::{Doc, Token};
-use grac::is_vowel_el;
+use grac::is_vowel;
 
 #[rustfmt::skip]
 const PLOSIVE_CLUSTERS: [&str; 16] = [
@@ -26,7 +26,7 @@ fn starts_with_vowel_or_plosive(token: &Token) -> bool {
         PLOSIVE_CLUSTERS
             .iter()
             .any(|&prefix| token.text().starts_with(prefix))
-            || is_vowel_el(ch)
+            || is_vowel(ch)
     })
 }
 

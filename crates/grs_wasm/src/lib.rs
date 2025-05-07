@@ -176,7 +176,7 @@ pub fn to_monotonic(text: &str) -> String {
 
 #[wasm_bindgen]
 pub fn syllabify(text: &str, separator: &str) -> String {
-    grac::syllabify_el(text).join(separator)
+    grac::syllabify(text).join(separator)
 }
 
 fn into_error<E: std::fmt::Display>(err: E) -> Error {
