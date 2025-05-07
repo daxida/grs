@@ -42,18 +42,37 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 17] = [
 /// Some of them may need excluding το/του in front
 /// CEx. αντικειμενικότητα το ότι δεν υπάρχουν...
 #[rustfmt::skip]
-const STOKEN_SEPARATOR_WORDS: [&str; 31] = [
-    // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
-    // CCONJ
-    "και", "κι", "ή", "αλλά", "όμως", "ωστόσο", "μα", "ενώ", "είτε", "ούτε",
-    // SCONJ
-    "αν", "άμα", "σαν", "σα",
-    "γιατί", "διότι", "επειδή", "αφού", "που", "ότι", 
-    "όταν", "όπου", "προτού",
-    // "πως", // this one is tricky
-    // Others
-    "με", "χωρίς", "θα", "μήπως", "λοιπόν", "για",
-    "δεν", "μην",
+const STOKEN_SEPARATOR_WORDS: [&str; 51] = [
+    // This includes spacy CCONJ (coordinating) and SCONJ (subordinating) conjunctions.
+    // https://en.wikipedia.org/wiki/Modern_Greek_grammar#Conjunctions
+    // note that we did simplify some repeated occurences (ex. που)
+    // * Copulative
+    "και", "κι", "ούτε", "μήτε", "ουδέ", "μηδέ", 
+    // * Disjunctive
+    "ή", "είτε",
+    // * Adversative
+    "μα", "αλλά", "παρά", "όμως", "ωστόσο", "ενώ", "μονολότι", "μόλο", // μόνο, // (ambiguous)
+    // * Inferential
+    "λοιπόν", "ώστε", "άρα", "επομένως",
+    // * Explanatory
+    "δηλαδή",
+    // * Complementizers
+    "ότι", "που", // "πως", // (ambiguous)
+    // * Temporal
+    "όταν", "καθώς", "σαν", "σα", "αφότου", "πριν", "μόλις", "όποτε", "όπου", "προτού",
+    "ώσπου", "ωσότου",
+    // * Causal
+    "γιατί", "διότι", "επειδή", "αφού",
+    // * Conditional
+    "αν", "εάν", "άμα",
+    // * Purpose
+    // "να", // (ambiguous)
+    // * Dubitative
+    "μήπως", "μην", "μη",
+    // * Comparative
+    "παρά",
+    // * OTHERS
+    "με", "χωρίς", "θα", "για", "δεν",
 ];
 
 // Does not include το, τα since they can also be accusative
