@@ -54,8 +54,8 @@ impl<'a> IntoIterator for &'a Doc<'a> {
 impl Doc<'_> {
     /// Debug function. Stringify the context of the token.
     pub fn context(&self, token: &Token) -> String {
-        let n_tokens_before = 5;
-        let n_tokens_after = 5;
+        let n_tokens_before = 7;
+        let n_tokens_after = 7;
 
         let start = token.index.saturating_sub(n_tokens_before);
         let end = token.index + n_tokens_after;

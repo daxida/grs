@@ -35,13 +35,29 @@ const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 17] = [
 ];
 
 /// Words that signify some separations that allows us to detect an error.
+/// * https://universaldependencies.org/u/pos/
+/// * https://universaldependencies.org/el/pos/
+/// * https://github.com/explosion/spacy/blob/master/spacy/glossary.py
+///
+/// Some of them may need excluding το/του in front
+/// CEx. αντικειμενικότητα το ότι δεν υπάρχουν...
 #[rustfmt::skip]
-const STOKEN_SEPARATOR_WORDS: [&str; 15] = [
+const STOKEN_SEPARATOR_WORDS: [&str; 31] = [
     // Conjunctions (groups SCONJ and CCONJ from similar spacy concepts.)
-    "και", "κι", "ή", "αλλά", "είτε", "ενώ", "όμως", "ωστόσο", "αφού",
+    // CCONJ
+    "και", "κι", "ή", "αλλά", "όμως", "ωστόσο", "μα", "ενώ", "είτε", "ούτε",
+    // SCONJ
+    "αν", "άμα", "σαν", "σα",
+    "γιατί", "διότι", "επειδή", "αφού", "που", "ότι", 
+    "όταν", "όπου", "προτού",
+    // "πως", // this one is tricky
     // Others
-    "με", "όταν", "θα", "μήπως", "λοιπόν", "για",
+    "με", "χωρίς", "θα", "μήπως", "λοιπόν", "για",
+    "δεν", "μην",
 ];
+
+// Does not include το, τα since they can also be accusative
+const ARTICLE_NOMINATIVE: [&str; 3] = ["ο", "η", "οι"];
 
 // https://el.wiktionary.org/wiki/το
 const SE_TO_COMPOUNDS: [&str; 10] = [
@@ -126,6 +142,8 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
         || ntoken.text() == nntoken.text()
         || SE_TO_COMPOUNDS.contains(&nntoken.text())
         || nntoken.is_elliptic_abbreviation()
+        // > Στο πρόσωπο του η φρίκη ήταν...
+        || ARTICLE_NOMINATIVE.contains(&nntoken.text())
     {
         return Some(());
     // Case να.
@@ -184,10 +202,20 @@ mod tests {
 
     test_mda!(basic1, "ανακαλύφθηκε το.", false);
     test_mda!(basic2, "Όταν ανακαλύφθηκε το.", false);
+
     test_mda!(stoken1, "αντίκτυπο του και", false);
     test_mda!(stoken2, "αντίκτυπο του κ.λ.π.", false);
     test_mda!(stoken3, "αντίκτυπο του κ.α.", false);
     test_mda!(stoken4, "Η ύπαρξη μου μήπως;", false);
+    test_mda!(stoken5, "στο πρόσωπο της που συγκινήθηκε", false);
+    test_mda!(stoken6, "να σπάσει τα κόκαλα του χωρίς ωφέλεια", false);
+    test_mda!(stoken7, "το μέτωπο του σα να ήθελε", false);
+    test_mda!(stoken8, "το πρόσωπο της όπου γυάλιζαν δυο μαύρα", false);
+    test_mda!(stoken9, "ο ήχος του ονόματος του που κουδούνιζε", false);
+
+    test_mda!(stoken_article1, "Στο πρόσωπο του η φρίκη ήταν...", false);
+    test_mda!(stoken_article2, "ανάμεσα τους ο Κωνσταντίνος", false);
+
     test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
     test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
 
