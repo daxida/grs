@@ -22,7 +22,7 @@ fn is_capitalized(s: &str) -> bool {
 fn missing_accent_capital_opt(token: &Token, doc: &Doc) -> Option<()> {
     if is_capitalized(token.text())
         // This is not some "has_acute" method to avoid false positives in polytonic
-        && !has_any_diacritic(token.text()) 
+        && !has_any_diacritic(token.text())
         // We know there is at least one char based on is_capitalized
         && is_vowel(token.text().chars().next().unwrap())
         && !doc.is_abbreviation_or_ends_with_dot(token)

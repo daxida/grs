@@ -156,7 +156,7 @@ impl Doc<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum TokenKind {
     /// Any whitespace character sequence.
@@ -207,6 +207,11 @@ impl<'a> Token<'a> {
     #[inline]
     pub const fn text(&self) -> &str {
         self.text
+    }
+
+    #[inline]
+    pub const fn kind(&self) -> TokenKind {
+        self.kind
     }
 
     /// Start and end byte of the token.

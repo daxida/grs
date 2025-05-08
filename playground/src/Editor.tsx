@@ -91,7 +91,7 @@ export default function Editor({
   const tokens: Token[] = tokenize(source.text);
   // const tokens_str = JSON.stringify(tokens, null, 2);
   const tokens_str = tokens.map(token =>
-    `${JSON.stringify(token.text)}, ${JSON.stringify(token.whitespace)}, ${token.range.start}..${token.range.end}`
+    `${JSON.stringify(token.text)}, ${JSON.stringify(token.kind)}, ${token.range.start}..${token.range.end}`
   ).join("\n");
   const result: SecondaryPanelResult = {
     content: tokens_str,

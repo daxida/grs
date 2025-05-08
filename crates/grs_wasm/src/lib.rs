@@ -2,6 +2,7 @@
 
 use grs::diagnostic::{Diagnostic, Fix};
 use grs::registry::{Rule, code_to_rule, rule_to_code};
+use grs::tokenizer::Token;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::Range;
@@ -22,15 +23,12 @@ export interface Diagnostic {
 };
 
 export interface Token {
-  text: string,
-  whitespace: string,
-  index: number,
+  kind: string;
   range: {
-    start: number,
-    end: number,
-  }
-  punct: boolean,
-  greek: boolean,
+    start: number;
+    end: number;
+  };
+  text: string;
 }"#;
 
 // TODO: Very unefficient
@@ -82,7 +80,7 @@ fn pascal_to_snake(s: &str) -> String {
     snake_case
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct DiagnosticJs {
     pub kind: String,
     pub range: Range<usize>,
@@ -93,16 +91,13 @@ pub struct DiagnosticJs {
 impl DiagnosticJs {
     fn new(text: &str, diagnostic: &Diagnostic) -> Self {
         let byte_range = diagnostic.range.start()..diagnostic.range.end();
-        let char_range = byte_range_to_char_range(text, byte_range);
-        let start = char_range.start;
-        let end = char_range.end;
-
+        let range = byte_range_to_char_range(text, byte_range);
         let pascal_case_rule = format!("{:?}", diagnostic.kind);
         let kind = pascal_to_snake(&pascal_case_rule);
 
         Self {
             kind,
-            range: start..end,
+            range,
             fix: to_fixjs(diagnostic.fix.as_ref()),
         }
     }
@@ -161,9 +156,31 @@ pub fn fix(text: &str, options: JsValue) -> String {
     res
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenJs {
+    kind: String,
+    range: Range<usize>,
+    text: String,
+}
+
+impl TokenJs {
+    fn new(text: &str, token: &Token) -> Self {
+        let byte_range = token.range().start()..token.range().end();
+        let range = byte_range_to_char_range(text, byte_range);
+        Self {
+            kind: format!("{:?}", token.kind()),
+            range,
+            text: token.text().to_string(),
+        }
+    }
+}
+
 #[wasm_bindgen]
 pub fn tokenize(text: &str) -> Result<JsValue, Error> {
-    let tokens = grs::tokenizer::tokenize(text);
+    let tokens = grs::tokenizer::tokenize(text)
+        .iter()
+        .map(|token| TokenJs::new(text, token))
+        .collect::<Vec<_>>();
     serde_wasm_bindgen::to_value(&tokens).map_err(into_error)
 }
 
