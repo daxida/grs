@@ -1,29 +1,15 @@
-/*
-* TODO:
-*
-* - Better deal with multiple errors in one line
-*
-* Links
-*
-* Stop words
-* - https://www.translatum.gr/forum/index.php?topic=3550.0?topic=3550.0
-* Final n
-* - https://www.translatum.gr/converter/teliko-n-diorthosi.php
-*
-* Spacy
-* - https://github.com/explosion/spaCy/tree/master/spacy/lang/el
-* Ruff
-* - https://github.com/astral-sh/ruff
-* clippy?
-*/
+use std::collections::HashMap;
+use std::io;
+use std::path::PathBuf;
+use std::process::ExitCode;
 
+use clap::CommandFactory;
 use clap::Parser;
+use clap_complete::generate;
 use colored::Colorize;
 use itertools::Itertools;
-use std::collections::HashMap;
-use std::path::PathBuf;
 
-use grs::cli::Args;
+use grs::cli::{Args, CheckCommand, Command};
 use grs::linter::{fix, lint_only};
 use grs::registry::Rule;
 use grs::text_diff::CodeDiff;
@@ -32,72 +18,84 @@ use grs::text_diff::CodeDiff;
 pub enum ExitStatus {
     Success,
     Failure,
-    Error,
 }
 
-#[allow(dead_code)]
-fn find_text_files_in_tests() -> Result<Vec<PathBuf>, ExitStatus> {
-    let dir_path = PathBuf::from(".");
-    let entries = std::fs::read_dir(&dir_path).map_err(|err| {
-        eprintln!("Failed to read directory {dir_path:?}: {err}");
-        ExitStatus::Failure
-    })?;
-    let mut text_files = Vec::new();
-    for entry in entries {
-        let entry = entry.map_err(|_| ExitStatus::Failure)?;
-        let path = entry.path();
-        if path.extension().and_then(|ext| ext.to_str()) == Some("txt") {
-            text_files.push(path);
+impl From<ExitStatus> for ExitCode {
+    fn from(status: ExitStatus) -> Self {
+        match status {
+            ExitStatus::Success => ExitCode::from(0),
+            ExitStatus::Failure => ExitCode::from(1),
         }
     }
-    Ok(text_files)
 }
 
-// TODO: run_for_file
-#[allow(clippy::too_many_lines)]
+fn read_file(path: &PathBuf) -> Result<String, ExitStatus> {
+    std::fs::read_to_string(path).map_err(|err| {
+        eprintln!("Failed to read file {:?}: {}", path, err);
+        ExitStatus::Failure
+    })
+}
+
+fn write_file(path: &PathBuf, content: &str) -> Result<(), ExitStatus> {
+    std::fs::write(path, content).map_err(|err| {
+        eprintln!("Failed to write to file {:?}: {}", path, err);
+        ExitStatus::Failure
+    })
+}
+
+fn get_text_files(files: Vec<PathBuf>) -> Result<Vec<PathBuf>, ExitStatus> {
+    let text_files = files
+        .into_iter()
+        .filter(|file| file.extension().and_then(|ext| ext.to_str()) == Some("txt"))
+        .collect::<Vec<_>>();
+    if text_files.is_empty() {
+        Err(ExitStatus::Success)
+    } else {
+        Ok(text_files)
+    }
+}
+
+fn time_it<T, F: FnOnce() -> T>(label: &str, f: F) -> T {
+    let start = std::time::Instant::now();
+    let result = f();
+    println!("{}: {:.2?}", label, start.elapsed());
+    result
+}
+
 fn run() -> Result<ExitStatus, ExitStatus> {
     let args = Args::parse();
 
-    let text_files = args
-        .files
-        .iter()
-        .filter(|file| file.extension().and_then(|ext| ext.to_str()) == Some("txt"))
-        .collect::<Vec<_>>();
-    // let text_files = find_text_files_in_tests()?;
-
-    if text_files.is_empty() {
-        eprintln!("No valid text files found.");
-        return Ok(ExitStatus::Success);
-    }
-
-    if args.to_monotonic {
-        for file in &text_files {
-            let text = match std::fs::read_to_string(file) {
-                Ok(content) => content,
-                Err(err) => {
-                    eprintln!("Failed to read file {file:?}: {err}");
-                    return Err(ExitStatus::Failure);
-                }
-            };
-            let monotonic = grac::to_monotonic(&text);
-            if let Err(err) = std::fs::write(file, &monotonic) {
-                eprintln!("Failed to write to file {file:?}: {err}");
-                return Err(ExitStatus::Failure);
-            }
+    match args.command {
+        Command::Check(check_args) => {
+            return time_it("Execution time", || run_check_command(check_args));
         }
-        println!("Successfully converted to monotonic.");
-        return Ok(ExitStatus::Success);
+        Command::ToMonotonic { files } => {
+            return time_it("Execution time", || run_to_monotonic_command(files));
+        }
+        Command::GenerateCompletions { shell } => {
+            // https://github.com/BurntSushi/ripgrep/blob/master/FAQ.md#complete
+            // grs generate-completions fish > ~/.config/fish/completions/grs.fish
+            let mut cmd = Args::command();
+            let bin_name = cmd.get_name().to_string();
+            generate(shell, &mut cmd, bin_name, &mut io::stdout());
+            Ok(ExitStatus::Success)
+        }
     }
+}
 
-    if args.fix {
-        println!("Fix flag is enabled.");
+fn run_to_monotonic_command(files: Vec<PathBuf>) -> Result<ExitStatus, ExitStatus> {
+    let text_files = get_text_files(files)?;
+    for file in &text_files {
+        let text = read_file(file)?;
+        let monotonic = grac::to_monotonic(&text);
+        write_file(file, &monotonic)?;
     }
-    if args.statistics {
-        println!("Statistics is enabled.");
-    }
-    if args.diff {
-        println!("Diff is enabled.");
-    }
+    println!("Successfully converted to monotonic.");
+    Ok(ExitStatus::Success)
+}
+
+fn run_check_command(args: CheckCommand) -> Result<ExitStatus, ExitStatus> {
+    let text_files = get_text_files(args.files)?;
 
     let default_rules: Vec<_> = ["MDA", "OS", "MA", "MNA"]
         .iter()
@@ -133,16 +131,7 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     let mut global_statistics_counter = HashMap::new();
 
     for file in &text_files {
-        let text = match std::fs::read_to_string(file) {
-            Ok(content) => content,
-            Err(err) => {
-                eprintln!("Failed to read file {file:?}: {err}");
-                return Err(ExitStatus::Failure);
-            }
-        };
-
-        // Header
-        // println!("{}", file.to_str().unwrap().purple());
+        let text = read_file(file)?;
 
         let statistics_counter = if args.diff {
             let (fixed, _messages, statistics_counter) = fix(&text, &config);
@@ -152,17 +141,13 @@ fn run() -> Result<ExitStatus, ExitStatus> {
             statistics_counter
         } else if args.fix {
             let (fixed, _messages, statistics_counter) = fix(&text, &config);
-            // Overwrite the file with the modified content
-            if let Err(err) = std::fs::write(file, &fixed) {
-                eprintln!("Failed to write to file {file:?}: {err}");
-            }
-            // if !args.statistics {
-            //     println!("{}", messages.join("\n"));
-            // }
+            write_file(file, &fixed)?;
             statistics_counter
         } else {
             let (messages, statistics_counter) = lint_only(&text, &config);
             if !args.statistics && !messages.is_empty() {
+                // Header
+                // println!("{}", file.to_str().unwrap().purple());
                 println!("{}", messages.join("\n"));
             }
             statistics_counter
@@ -200,7 +185,6 @@ fn run() -> Result<ExitStatus, ExitStatus> {
         .filter_map(|(rule, cnt)| if rule.has_fix() { Some(cnt) } else { None })
         .sum::<usize>();
 
-    // Should probably count those with fixes...
     if n_errors == 0 {
         println!("No errors!");
     } else if args.fix {
@@ -217,42 +201,6 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     Ok(ExitStatus::Success)
 }
 
-fn main() {
-    let fr = std::time::Instant::now();
-    let _ = run();
-    println!("Execution time: {:.2?}", fr.elapsed());
-}
-
-// For ad-hoc tests
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use grs::tokenizer::tokenize;
-
-    #[test]
-    fn test_ad_hoc() {
-        let text = r"
-        φήμη στην Χάρλεϋ Στρήτ. Θα 
-        "
-        .trim()
-        .split_inclusive('\n')
-        .map(str::trim_start)
-        .collect::<String>();
-
-        let config_str = ["MA"];
-        let config: Vec<_> = config_str
-            .iter()
-            .map(|code| code.parse::<Rule>().unwrap())
-            .collect();
-
-        println!("Text: '{}'", &text);
-        for token in tokenize(&text) {
-            println!("{token:?}");
-        }
-        let (fixed, messages, _) = fix(&text, &config);
-        println!("{}", messages.join("\n"));
-        println!("{fixed}");
-
-        // assert!(false);
-    }
+fn main() -> ExitCode {
+    run().unwrap_or_else(Into::into).into()
 }

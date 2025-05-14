@@ -10,6 +10,6 @@ RULE := "ALL"
 
 # Quick test - The first one is for warmup
 t path="texts/dump_lg.txt":
-  cargo run -rq {{path}} --select {{RULE}} --statistics
-  grs {{path}} --select {{RULE}} --statistics
-  cargo run -rq {{path}} --select {{RULE}} --statistics
+  cargo run -rq check {{path}} --select {{RULE}} --statistics
+  grs check {{path}} --select {{RULE}} --statistics
+  cargo run -rq check {{path}} --select {{RULE}} --statistics

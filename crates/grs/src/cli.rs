@@ -1,18 +1,44 @@
 use crate::registry::Rule;
-use clap::Parser;
 use clap::builder::{PossibleValue, TypedValueParser};
+use clap::{Parser, Subcommand, command};
+use clap_complete::Shell;
 use std::path::PathBuf;
 use strum::IntoEnumIterator;
 
-// Cf. https://github.com/astral-sh/ruff/blob/1bdb22c13972b3a3dc9cb4ef31fbf37db051dd1c/crates/ruff/src/args.rs#L185
-#[derive(Parser, Debug)]
+#[derive(Debug, Parser)]
 #[command(
     name = "grs",
     about = "Grs: a rule-based spell checker for Greek.",
     version = env!("CARGO_PKG_VERSION")
 )]
-#[allow(clippy::struct_excessive_bools)]
 pub struct Args {
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Run Grs on the given text files
+    Check(CheckCommand),
+
+    /// Convert text to monotonic Greek
+    ToMonotonic {
+        /// Files to process. Anything other than .txt files will be ignored.
+        #[arg(value_parser, required = true)]
+        files: Vec<PathBuf>,
+    },
+
+    /// Generate shell completions
+    GenerateCompletions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
+    },
+}
+
+// Cf. https://github.com/astral-sh/ruff/blob/1bdb22c13972b3a3dc9cb4ef31fbf37db051dd1c/crates/ruff/src/args.rs#L185
+#[derive(Parser, Debug)]
+pub struct CheckCommand {
     /// Files to process. Anything other than .txt files will be ignored.
     #[arg(value_parser, required = true)]
     pub files: Vec<PathBuf>,
@@ -48,11 +74,6 @@ pub struct Args {
     /// Show statistics after processing.
     #[arg(long)]
     pub statistics: bool,
-
-    /// Convert text to monotonic Greek.
-    // Does this belong to this project?
-    #[arg(long = "to-monotonic")]
-    pub to_monotonic: bool,
 }
 
 // The whole point of selector is to deal with the --select ALL
