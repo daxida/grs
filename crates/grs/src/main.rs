@@ -23,22 +23,22 @@ pub enum ExitStatus {
 impl From<ExitStatus> for ExitCode {
     fn from(status: ExitStatus) -> Self {
         match status {
-            ExitStatus::Success => ExitCode::from(0),
-            ExitStatus::Failure => ExitCode::from(1),
+            ExitStatus::Success => Self::from(0),
+            ExitStatus::Failure => Self::from(1),
         }
     }
 }
 
 fn read_file(path: &PathBuf) -> Result<String, ExitStatus> {
     std::fs::read_to_string(path).map_err(|err| {
-        eprintln!("Failed to read file {:?}: {}", path, err);
+        eprintln!("Failed to read file {path:?}: {err}");
         ExitStatus::Failure
     })
 }
 
 fn write_file(path: &PathBuf, content: &str) -> Result<(), ExitStatus> {
     std::fs::write(path, content).map_err(|err| {
-        eprintln!("Failed to write to file {:?}: {}", path, err);
+        eprintln!("Failed to write to file {path:?}: {err}");
         ExitStatus::Failure
     })
 }
@@ -66,11 +66,9 @@ fn run() -> Result<ExitStatus, ExitStatus> {
     let args = Args::parse();
 
     match args.command {
-        Command::Check(check_args) => {
-            return time_it("Execution time", || run_check_command(check_args));
-        }
+        Command::Check(check_args) => time_it("Execution time", || run_check_command(check_args)),
         Command::ToMonotonic { files } => {
-            return time_it("Execution time", || run_to_monotonic_command(files));
+            time_it("Execution time", || run_to_monotonic_command(files))
         }
         Command::GenerateCompletions { shell } => {
             // https://github.com/BurntSushi/ripgrep/blob/master/FAQ.md#complete

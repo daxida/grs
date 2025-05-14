@@ -24,28 +24,25 @@ pub const PRONOUNS_LOWERCASE: [&str; 15] = [
 ];
 
 /// Punctuation that prevents a positive diagnostic of an error on the second token.
-///
-/// From \" onward they come from testing against the wikidump,
-/// and, even if rare, they make sense to keep.
 #[rustfmt::skip]
 const STOKEN_AMBIGUOUS_INITIAL_PUNCT: [&str; 17] = [
-    "...", "…", "«", "\"", "“",
-    "[", "]", "{", "}", "(", ")", "*", "<", "#", ":",
-    "-", "~",
+    "...", "…", "«", "\"",
+    // From testing against the wikidump. Rare, but they make sense to keep.
+    "“", "[", "]", "{", "}", "(", ")", "*", "<", "#", ":", "-", "~",
 ];
 
 /// Words that signify some separations that allows us to detect an error.
-/// * https://universaldependencies.org/u/pos/
-/// * https://universaldependencies.org/el/pos/
-/// * https://github.com/explosion/spacy/blob/master/spacy/glossary.py
+/// * <https://universaldependencies.org/u/pos>
+/// * <https://universaldependencies.org/el/pos>
+/// * <https://github.com/explosion/spacy/blob/master/spacy/glossary.py>
 ///
 /// Some of them may need excluding το/του in front
-/// CEx. αντικειμενικότητα το ότι δεν υπάρχουν...
+/// Ex. ...με αντικειμενικότητα το ότι δεν υπάρχουν...
 #[rustfmt::skip]
 const STOKEN_SEPARATOR_WORDS: [&str; 51] = [
     // This includes spacy CCONJ (coordinating) and SCONJ (subordinating) conjunctions.
     // https://en.wikipedia.org/wiki/Modern_Greek_grammar#Conjunctions
-    // note that we did simplify some repeated occurences (ex. που)
+    // Note that we did simplify some repeated occurences (ex. που)
     // * Copulative
     "και", "κι", "ούτε", "μήτε", "ουδέ", "μηδέ", 
     // * Disjunctive
@@ -79,24 +76,15 @@ const STOKEN_SEPARATOR_WORDS: [&str; 51] = [
 const ARTICLE_NOMINATIVE: [&str; 3] = ["ο", "η", "οι"];
 
 // https://el.wiktionary.org/wiki/το
+#[rustfmt::skip]
 const SE_TO_COMPOUNDS: [&str; 10] = [
-    "στου",
-    "στης",
-    "στον",
-    "στη",
-    "στην",
-    "στο",
-    "στων",
-    "στους",
-    "στις",
-    "στα",
+    "στου", "στης", "στον", "στη", "στην", "στο", "στων", "στους", "στις", "στα",
 ];
 
 /// Extract the lemma of a word.
 ///
-/// This allows us to fully use the syllabification logic of grac by
-/// being able to use the synizesis table against the lemma instead of
-/// the word (since the word itself may very well not be in the table).
+/// This allows us to fully use the syllabification logic of grac by querying the synizesis table
+/// against the lemmatized word instead (since the word itself may very well not be in the table).
 ///
 /// Example: lemmatize("παλιοκατσάριαν") == "κατσάρια"
 #[inline]
@@ -104,12 +92,9 @@ fn lemmatize(s: &str) -> &str {
     s.trim_end_matches('ν').trim_start_matches("παλιο")
 }
 
-/// Return true iif we need to fix the missing double accent
+/// Return true iif we need to fix the missing double accent.
 ///
-/// Uses an option so we can gracefully exit when there is not a next token
-///
-/// The proparoxytone test is the most expensive part, so we compute it last,
-/// outside of this function.
+/// The proparoxytone test is very expensive, so we compute it last, outside of this function.
 #[allow(clippy::similar_names)]
 fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     // Discarded ideas:
