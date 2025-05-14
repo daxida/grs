@@ -132,7 +132,7 @@ fn missing_double_accents_opt(token: &Token, doc: &Doc) -> Option<()> {
     if MULTIPLE_PRONUNCIATION.contains(&token.text())
         // We do not deal with diminutives at the moment.
         || token.text().ends_with("άκια")
-        || token.text().ends_with("ούλια")
+        || token.text().ends_with("ούδια")
         // See also `crate::rules::accents::multisyllable_not_accented_opt`
         || token.text().contains(['[', ']'])
     {
@@ -222,6 +222,18 @@ mod tests {
     test_mda!(basic1, "ανακαλύφθηκε το.", false);
     test_mda!(basic2, "Όταν ανακαλύφθηκε το.", false);
 
+    test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
+    test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
+
+    test_mda!(already_correct, "ανακαλύφθηκέ το.", true);
+    test_mda!(no_proparoxytone, "καλός.", true);
+    test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
+    test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
+    test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+
+    test_mda!(diminutives, "τα συμβούλια του με τους στρατηγούς", false);
+
+    // STOKEN_SEPARATOR
     test_mda!(stoken1, "αντίκτυπο του και", false);
     test_mda!(stoken2, "αντίκτυπο του κ.λ.π.", false);
     test_mda!(stoken3, "αντίκτυπο του κ.α.", false);
@@ -231,30 +243,20 @@ mod tests {
     test_mda!(stoken7, "το μέτωπο του σα να ήθελε", false);
     test_mda!(stoken8, "το πρόσωπο της όπου γυάλιζαν δυο μαύρα", false);
     test_mda!(stoken9, "ο ήχος του ονόματος του που κουδούνιζε", false);
+    test_mda!(stoken10, "το πρόσωπο του όπου η μαύρη λύπη", false);
+    test_mda!(stoken11, "αποβίβασε το στράτευμα του για να...", false);
+    test_mda!(stoken12, "Το ένστικτο του λοιπόν του λέγει να...", false);
 
-    test_mda!(stoken_article1, "Στο πρόσωπο του η φρίκη ήταν...", false);
-    test_mda!(stoken_article2, "ανάμεσα τους ο Κωνσταντίνος", false);
-
-    test_mda!(tha1, "Το κιτρινιάρικο μούτσουνο σου θα", false);
-    test_mda!(tha2, "Και τ' όνομα του θα το μετάλεγαν οι άνθρωποι", false);
-
-    // STOKEN_SEPARATOR
-    // * Conjunctions
+    // Conjunctions
     test_mda!(conj1, "την πρόσβαση σας ή την", false);
     test_mda!(conj2, "το τηλέφωνο σας ενώ οδηγείτε,", false);
     test_mda!(conj3, "χτυπά τα θύματα της είτε αργά και", false);
     test_mda!(conj4, "Μετά την ανάσταση μου όμως θα σας", false);
     test_mda!(conj5, "θέση στο πολίτευμα μας αφού είναι το", false);
     test_mda!(conj6, "Στα ποιήματα του ωστόσο διαβάζουμε ότι", false);
-    // * Others
-    test_mda!(stok1, "αποβίβασε το στράτευμα του για να βοηθήσει", false);
-    test_mda!(stok2, "Το ένστικτο του λοιπόν του λέγει να σφάζει", false);
 
-    test_mda!(already_correct, "ανακαλύφθηκέ το.", true);
-    test_mda!(no_proparoxytone, "καλός.", true);
-    test_mda!(numbers, "ανακαλύφθηκε το 1966", true);
-    test_mda!(newline_asterisk, "διακρίνονται σε\n*", true);
-    test_mda!(me_tou, "περισσότερο με του αλόγου", true);
+    test_mda!(stoken_article1, "Στο πρόσωπο του η φρίκη ήταν...", false);
+    test_mda!(stoken_article2, "ανάμεσα τους ο Κωνσταντίνος", false);
 
     // Before na
     test_mda!(before_na1, "Άφησε τον να βρει μόνος του", false);
