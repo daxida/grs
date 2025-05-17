@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Grs Extension",
+  "name": "Grs",
   "short_name": "Grs",
   "description": "Greek rule-based spell checker",
   "version": "0.1.0",
@@ -9,6 +9,12 @@
   "offline_enabled": true,
   "action": {
     "default_popup": "popup.html"
+  },
+  "icons": {
+    "16": "images/greek-flag-16.png",
+    "32": "images/greek-flag-32.png",
+    "48": "images/greek-flag-48.png",
+    "128": "images/greek-flag-128.png"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
