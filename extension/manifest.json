@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Wasm Extension",
-  "short_name": "Chrome Wasm Extension",
-  "description": "",
-  "version": "1.0.1",
-  "author": "Berrigan",
+  "name": "Grs Extension",
+  "short_name": "Grs",
+  "description": "Greek rule-based spell checker",
+  "version": "0.1.0",
+  "author": "daxida",
   "minimum_chrome_version": "110",
   "offline_enabled": true,
   "action": {

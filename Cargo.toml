@@ -6,6 +6,7 @@ resolver = "2"
 edition = "2024"
 rust-version = "1.86"
 repository = "https://github.com/daxida/grs"
+authors = ["daxida"]
 license = "MIT"
 
 [workspace.dependencies]

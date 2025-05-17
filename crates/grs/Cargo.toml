@@ -4,8 +4,9 @@ version = "0.1.2"
 edition = { workspace = true }
 rust-version = { workspace = true }
 repository = { workspace = true }
-license = { workspace = true }
 description = "Greek rule-based spell checker"
+authors = { workspace = true }
+license = { workspace = true }
 
 [lib]
 
