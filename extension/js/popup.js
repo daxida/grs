@@ -14,9 +14,9 @@ const defaultRuleStates = {
 };
 
 const COLORS = {
-  green: '#4CAF50',
-  red: '#b22222',
-  yellow: '#e6b800',
+  green: '#2e7d32',
+  red: '#c62828',
+  yellow: '#f9a825',
   black: '#000000',
 };
 
