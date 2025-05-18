@@ -1,5 +1,8 @@
 // To inspect the console logs, one has to open the popup's devtools
 // (as opposed to the default webpage's devtools that is opened in chrome)
+//
+// There are some repeated requests to get lastDiagnosticCnt from content.js
+// but performance wise it should be fine, and I don't think it deserves some refactor.
 
 
 // TODO: get defaults from wasm && sync with content.js
@@ -84,13 +87,8 @@ function updateRuleButtonCounters() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length === 0) return;
     chrome.tabs.sendMessage(tabs[0].id, { action: "getLastDiagnosticCnt" }, (response) => {
-      if (chrome.runtime.lastError) {
-        return;
-      }
-
-      if (!response || !response.lastDiagnosticCnt) {
-        return;
-      }
+      if (chrome.runtime.lastError) return;
+      if (!response || !response.lastDiagnosticCnt) return;
 
       // First clear the counters by setting them to 0
       document.querySelectorAll(".counter-cell").forEach(counter => {
@@ -104,9 +102,7 @@ function updateRuleButtonCounters() {
         const row = button.closest("tr");
         const counterCell = row.querySelector(".counter-cell");
         counterCell.textContent = response.lastDiagnosticCnt[key];
-        console.log("Updated countercell with ", response.lastDiagnosticCnt[key]);
       }
-      console.log("Updated button counters");
     });
   });
 }
@@ -173,11 +169,12 @@ document.addEventListener('DOMContentLoaded', async function() {
   updateRuleButtonCounters();
 
   const colorPicker = document.getElementById('color-picker');
+  const checkButton = document.getElementById("check-btn");
   const toMonotonicButton = document.getElementById("to-monotonic-btn");
   const fixButton = document.getElementById("fix-btn");
   const ruleButtons = document.getElementsByClassName("rule-btn");
-  const flipRulesBtn = document.getElementById("flip-all-rules-btn");
-  const resetRulesBtn = document.getElementById("reset-all-rules-btn");
+  const flipRulesButton = document.getElementById("flip-all-rules-btn");
+  const resetRulesButton = document.getElementById("reset-all-rules-btn");
   let debounceTimer;
 
   // COLORS
@@ -198,13 +195,38 @@ document.addEventListener('DOMContentLoaded', async function() {
   });
 
   // *** Buttons ***
+  // * Button - CHECK
+  checkButton.addEventListener("click", () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs.length === 0) return;
+      chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, () => {
+        if (chrome.runtime.lastError) return;
+        updateRuleButtonCounters();
+      });
+
+      chrome.tabs.sendMessage(tabs[0].id, { action: "getLastDiagnosticCnt" }, (response) => {
+        if (chrome.runtime.lastError) return;
+        if (!response || !response.lastDiagnosticCnt) return;
+        const counterMap = new Map(Object.entries(response.lastDiagnosticCnt));
+        const numErrors = [...counterMap.values()].reduce((acc, val) => acc + Number(val), 0);
+        showFeedback(`Found ${numErrors} errors`, "green");
+      });
+    });
+  });
+
   // * Button - MONOTONIC
-  // NOTE: This does not update button counters
   toMonotonicButton.addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length === 0) return;
-      chrome.tabs.sendMessage(tabs[0].id, { action: "runToMono" })
-      showFeedback("Converted to monotonic", "green");
+      chrome.tabs.sendMessage(tabs[0].id, { action: "runToMono" }, () => {
+        if (chrome.runtime.lastError) return;
+        showFeedback("Converted to monotonic", "green");
+      });
+
+      chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, () => {
+        if (chrome.runtime.lastError) return;
+        updateRuleButtonCounters();
+      });
     });
   });
 
@@ -213,9 +235,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length === 0) return;
       chrome.tabs.sendMessage(tabs[0].id, { action: "runFix" }, (response) => {
-        if (chrome.runtime.lastError) {
-          return;
-        }
+        if (chrome.runtime.lastError) return;
 
         if (response && response.counter) {
           const counterMap = new Map(Object.entries(response.counter));
@@ -244,15 +264,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     const ruleStates = result.ruleStates || DEFAULT_RULE_STATES;
     const allDisabled = Object.values(ruleStates).every(state => state === false);
     if (allDisabled) {
-      flipRulesBtn.textContent = "Enable All";
+      flipRulesButton.textContent = "Enable All";
       flipState = false;
     } else {
-      flipRulesBtn.textContent = "Disable All";
+      flipRulesButton.textContent = "Disable All";
       flipState = true;
     }
   });
 
-  flipRulesBtn.addEventListener("click", async function() {
+  flipRulesButton.addEventListener("click", async function() {
     chrome.storage.local.get('ruleStates', function(result) {
       const ruleStates = result.ruleStates || ruleState;
       for (const rule in ruleStates) {
@@ -263,7 +283,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       }
       chrome.storage.local.set({ ruleStates: ruleStates });
     });
-    updateToggleButtonText(flipRulesBtn, flipState);
+    updateToggleButtonText(flipRulesButton, flipState);
     flipState = !flipState;
     updateRuleButtonCounters();
     showFeedback(flipState ? "Enabled all \u{1F31E}" : "Disabled all \u{1F634}", "green");
@@ -274,7 +294,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // * Button - RESET ALL RULES
-  resetRulesBtn.addEventListener("click", async function() {
+  resetRulesButton.addEventListener("click", async function() {
     chrome.storage.local.get('ruleStates', function(result) {
       const ruleStates = result.ruleStates || ruleState;
       for (const rule in ruleStates) {

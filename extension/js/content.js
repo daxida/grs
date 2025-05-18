@@ -147,7 +147,7 @@ loadWasmModule().then((mod) => {
 
   // Message passing
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    console.log(`[L] Received message: ${message.action}`, message);
+    console.log(`[L] Received message: ${message.action}`);
 
     switch (message.action) {
       case "runScan":
