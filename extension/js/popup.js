@@ -42,6 +42,12 @@ function displayExtensionVersion() {
   }
 }
 
+function initCounterDisplay(counterElement) {
+  counterElement.textContent = "0";
+  counterElement.style.fontWeight = "normal";
+  counterElement.style.fontSize = "1.1em";
+}
+
 // Dynamically create rule buttons and append them to the given container.
 function createRuleButtons(rulesContainer, ruleCodes) {
   const title = document.createElement("span");
@@ -71,7 +77,7 @@ function createRuleButtons(rulesContainer, ruleCodes) {
     counterCell.className = "counter-cell";
     const counter = document.createElement("span");
     counter.className = "counter";
-    counter.textContent = "0";
+    initCounterDisplay(counter);
     counterCell.appendChild(counter);
 
     row.appendChild(buttonCell);
@@ -90,18 +96,19 @@ function updateRuleButtonCounters() {
       if (chrome.runtime.lastError) return;
       if (!response || !response.lastDiagnosticCnt) return;
 
-      // First clear the counters by setting them to 0
-      document.querySelectorAll(".counter-cell").forEach(counter => {
-        counter.textContent = "0";
+      // Reset counterCells
+      document.querySelectorAll(".counter-cell").forEach(counterCell => {
+        initCounterDisplay(counterCell);
       });
 
       for (const key in response.lastDiagnosticCnt) {
-        // Find the button corresponding to the rule
         const button = document.querySelector(`button[data-rule="${key}"]`);
-        // Locate the parent row (tr) of the button
         const row = button.closest("tr");
         const counterCell = row.querySelector(".counter-cell");
-        counterCell.textContent = response.lastDiagnosticCnt[key];
+
+        const count = Number(response.lastDiagnosticCnt[key]);
+        counterCell.textContent = count;
+        counterCell.style.fontWeight = count > 0 ? "bold" : "normal";
       }
     });
   });
@@ -209,7 +216,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         if (!response || !response.lastDiagnosticCnt) return;
         const counterMap = new Map(Object.entries(response.lastDiagnosticCnt));
         const numErrors = [...counterMap.values()].reduce((acc, val) => acc + Number(val), 0);
-        showFeedback(`Found ${numErrors} errors`, "green");
+        if (numErrors > 0) {
+          showFeedback(`Found ${numErrors} error(s)`, "green");
+        } else {
+          showFeedback("\u{2705} Found no errors", "green");
+        }
       });
     });
   });
@@ -286,14 +297,14 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateToggleButtonText(flipRulesButton, flipState);
     flipState = !flipState;
     updateRuleButtonCounters();
-    showFeedback(flipState ? "Enabled all \u{1F31E}" : "Disabled all \u{1F634}", "green");
+    showFeedback(flipState ? "\u{1F31E} Enabled all" : "\u{1F634} Disabled all", "green");
   });
 
   function updateToggleButtonText(button, state) {
     button.textContent = state ? "Enable All" : "Disable All";
   }
 
-  // * Button - RESET ALL RULES
+  // * Button - RESET RULES
   resetRulesButton.addEventListener("click", async function() {
     chrome.storage.local.get('ruleStates', function(result) {
       const ruleStates = result.ruleStates || ruleState;
@@ -306,7 +317,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       chrome.storage.local.set({ ruleStates: ruleStates });
     });
     updateRuleButtonCounters();
-    showFeedback("Rules reset to default", "green");
+    showFeedback("\uD83D\uDD04 Rules reset to default", "green");
   });
 
   // RULES
