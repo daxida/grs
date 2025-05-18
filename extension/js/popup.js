@@ -1,8 +1,42 @@
 // To inspect the console logs, one has to open the popup's devtools
 // (as opposed to the default webpage's devtools that is opened in chrome)
 
-function handleError(response) {
-  console.log("[POPUP] Response status:", response?.status);
+
+// TODO: get defaults from wasm && sync with content.js
+const defaultRuleStates = {
+  "MDA": true,
+  "OS": true,
+  "MA": true,
+  "MNA": true,
+};
+
+const COLORS = {
+  green: '#4CAF50',
+  red: '#b22222',
+  yellow: '#e6b800',
+  black: '#000000',
+};
+
+// Display a simple feedback message
+function showFeedback(message, colorName = 'black') {
+  const feedback = document.getElementById('feedback-msg');
+  const color = COLORS[colorName.toLowerCase()] || COLORS.black;
+  feedback.textContent = message;
+  feedback.style.color = color;
+
+  clearTimeout(showFeedback.timeoutId);
+  showFeedback.timeoutId = setTimeout(() => {
+    feedback.textContent = '';
+  }, 1500); // 1.5 seconds timeout
+}
+
+// Function to fetch and display the extension version from manifest.json
+function displayExtensionVersion() {
+  const versionElement = document.getElementById('version');
+  const manifest = chrome.runtime.getManifest();
+  if (versionElement && manifest.version) {
+    versionElement.textContent = `v.${manifest.version}`;
+  }
 }
 
 // Dynamically create rule buttons and append them to the given container.
@@ -50,8 +84,11 @@ function updateRuleButtonCounters() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length === 0) return;
     chrome.tabs.sendMessage(tabs[0].id, { action: "getLastDiagnosticCnt" }, (response) => {
+      if (chrome.runtime.lastError) {
+        return;
+      }
+
       if (!response || !response.lastDiagnosticCnt) {
-        // console.warn("No diagnostic count received.");
         return;
       }
 
@@ -80,7 +117,7 @@ function saveColor(colorPicker) {
   chrome.storage.local.set({ selectedColor: selectedColor });
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length === 0) return;
-    chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, handleError);
+    chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" });
   });
 }
 
@@ -90,8 +127,7 @@ async function loadRuleStateFromContentScript() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length === 0) return reject('No active tabs found.');
       chrome.tabs.sendMessage(tabs[0].id, { action: 'getRuleSettings' }, (response) => {
-        console.log('Received response from content:', response);
-        resolve(response.ruleSettings);
+        resolve(response?.ruleSettings || defaultRuleStates);
       });
     });
   });
@@ -127,6 +163,8 @@ function sendSetRuleMessage(rule) {
 document.addEventListener('DOMContentLoaded', async function() {
   const ruleState = await loadRuleState();
 
+  displayExtensionVersion();
+
   // console.log(ruleState);
   ruleCodes = Object.keys(ruleState);
   const rulesContainer = document.querySelector(".rules");
@@ -139,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   const fixButton = document.getElementById("fix-btn");
   const ruleButtons = document.getElementsByClassName("rule-btn");
   const flipRulesBtn = document.getElementById("flip-all-rules-btn");
+  const resetRulesBtn = document.getElementById("reset-all-rules-btn");
   let debounceTimer;
 
   // COLORS
@@ -152,7 +191,10 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Debounced function to save color once user stops input
   colorPicker.addEventListener("input", function() {
     clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => saveColor(colorPicker), 500);
+    debounceTimer = setTimeout(() => {
+      saveColor(colorPicker);
+      showFeedback(`Changed color to ${colorPicker.value}`, "green");
+    }, 500);
   });
 
   // *** Buttons ***
@@ -161,23 +203,55 @@ document.addEventListener('DOMContentLoaded', async function() {
   toMonotonicButton.addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length === 0) return;
-      chrome.tabs.sendMessage(tabs[0].id, { action: "runToMono" }, handleError)
+      chrome.tabs.sendMessage(tabs[0].id, { action: "runToMono" })
+      showFeedback("Converted to monotonic", "green");
     });
   });
 
   // * Button - FIX
-  // NOTE: This does not update button counters
-  //
-  // FIXME: Should update really
   fixButton.addEventListener("click", () => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs.length === 0) return;
-      chrome.tabs.sendMessage(tabs[0].id, { action: "runFix" }, handleError)
+      chrome.tabs.sendMessage(tabs[0].id, { action: "runFix" }, (response) => {
+        if (chrome.runtime.lastError) {
+          return;
+        }
+
+        if (response && response.counter) {
+          const counterMap = new Map(Object.entries(response.counter));
+          const numErrors = [...counterMap.values()].reduce((acc, val) => acc + Number(val), 0);
+          const finalS = numErrors > 1 ? "s" : "";
+          if (numErrors > 0) {
+            showFeedback(`Fixed ${numErrors} error${finalS}`, "green");
+          } else {
+            showFeedback("No fixable errors found", "yellow");
+          }
+        } else {
+          showFeedback("No errors found", "yellow");
+        }
+
+        updateRuleButtonCounters();
+      });
     });
   });
 
   // * Button - TOGGLE ALL RULES
   let flipState = true;
+
+  // Update flipState on popup load (in order to not show Disable All, when
+  // all the rules where already disabled beforehand).
+  chrome.storage.local.get('ruleStates', (result) => {
+    const ruleStates = result.ruleStates || DEFAULT_RULE_STATES;
+    const allDisabled = Object.values(ruleStates).every(state => state === false);
+    if (allDisabled) {
+      flipRulesBtn.textContent = "Enable All";
+      flipState = false;
+    } else {
+      flipRulesBtn.textContent = "Disable All";
+      flipState = true;
+    }
+  });
+
   flipRulesBtn.addEventListener("click", async function() {
     chrome.storage.local.get('ruleStates', function(result) {
       const ruleStates = result.ruleStates || ruleState;
@@ -192,11 +266,28 @@ document.addEventListener('DOMContentLoaded', async function() {
     updateToggleButtonText(flipRulesBtn, flipState);
     flipState = !flipState;
     updateRuleButtonCounters();
+    showFeedback(flipState ? "Enabled all \u{1F31E}" : "Disabled all \u{1F634}", "green");
   });
 
   function updateToggleButtonText(button, state) {
     button.textContent = state ? "Enable All" : "Disable All";
   }
+
+  // * Button - RESET ALL RULES
+  resetRulesBtn.addEventListener("click", async function() {
+    chrome.storage.local.get('ruleStates', function(result) {
+      const ruleStates = result.ruleStates || ruleState;
+      for (const rule in ruleStates) {
+        ruleStates[rule] = defaultRuleStates[rule] || false;
+        // Update button CSS
+        const button = document.querySelector(`button[data-rule="${rule}"]`);
+        button.classList.toggle("inactive", !ruleStates[rule]);
+      }
+      chrome.storage.local.set({ ruleStates: ruleStates });
+    });
+    updateRuleButtonCounters();
+    showFeedback("Rules reset to default", "green");
+  });
 
   // RULES
   // Update popup CSS with local storage

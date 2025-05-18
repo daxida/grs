@@ -11,8 +11,17 @@ const loadWasmModule = async () => {
   return isOk ? mod : null;
 };
 
+// TODO: Sync with popup.js
 let DEFAULT_RULE_STATES = null;
 let lastDiagnosticCnt = null;
+
+function walk(node, iterNode) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    iterNode(node);
+  } else {
+    node.childNodes.forEach((node) => walk(node, iterNode));
+  }
+}
 
 loadWasmModule().then((mod) => {
   if (mod === null) {
@@ -23,14 +32,6 @@ loadWasmModule().then((mod) => {
   const codes = mod.rule_codes();
   DEFAULT_RULE_STATES = Object.fromEntries(codes.map(rule => [rule, true]));
   // console.log('Initialized DEFAULT_RULE_STATES to ', DEFAULT_RULE_STATES);
-
-  function walk(node, iterNode) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      iterNode(node);
-    } else {
-      node.childNodes.forEach((node) => walk(node, iterNode));
-    }
-  }
 
   function groupDiagnostics(diagnostics) {
     // Note that the highlighting logic could fail if two diagnostic ranges overlap.
@@ -84,15 +85,18 @@ loadWasmModule().then((mod) => {
   }
 
   function scanPage() {
-    chrome.storage.local.get(["selectedColor", "ruleStates"], (data) => {
-      const color = data.selectedColor || "#FFFF00"; // Default to yellow
-      const ruleStates = data.ruleStates || DEFAULT_RULE_STATES; // Default to all true
-      scanPageGo(color, ruleStates);
+    return new Promise((resolve) => {
+      chrome.storage.local.get(["selectedColor", "ruleStates"], (data) => {
+        const color = data.selectedColor || "#FFFF00"; // Default to yellow
+        const ruleStates = data.ruleStates || DEFAULT_RULE_STATES;
+        const counter = scanPageGo(color, ruleStates);
+        resolve(counter);
+      });
     });
   }
 
   function scanPageGo(color, ruleStates) {
-    console.log(`Running scanPage with color: ${color} and `, ruleStates);
+    // console.log(`Running scanPage with color: ${color} and `, ruleStates);
     const cnt = new Map();
 
     const iterNode = (node) => {
@@ -108,8 +112,7 @@ loadWasmModule().then((mod) => {
           highlightNode(node, color, diagnostics);
         }
       } catch (e) {
-        console.log(e);
-        console.log("Failed with text " + textContent);
+        console.warn("Failed with text:", node.textContent, e);
       }
     }
 
@@ -118,10 +121,11 @@ loadWasmModule().then((mod) => {
     const sortedCnt = new Map(
       [...cnt.entries()].sort((a, b) => a[0].localeCompare(b[0]))
     );
-    console.log("Diagnostic counter", sortedCnt);
+    console.debug("Diagnostic counter", sortedCnt);
 
     // Store it so popup can display it
     lastDiagnosticCnt = sortedCnt;
+    return sortedCnt;
   }
 
   function toMonotonic() {
@@ -143,8 +147,7 @@ loadWasmModule().then((mod) => {
 
   // Message passing
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    console.log("Received message:", message);
-    console.log(`[L] Running ${message.action}...`);
+    console.log(`[L] Received message: ${message.action}`, message);
 
     switch (message.action) {
       case "runScan":
@@ -159,10 +162,25 @@ loadWasmModule().then((mod) => {
         break;
 
       case "runFix":
-        removeHighlight();
-        fixText();
-        scanPage();
-        break;
+        (async () => {
+          removeHighlight();
+          fixText();
+          const previousDiagnosticCnt = lastDiagnosticCnt;
+          const counter = await scanPage();
+
+          const difCounter = new Map();
+          for (const [key, prevValue] of previousDiagnosticCnt.entries()) {
+            const currValue = counter.get(key) || 0;
+            const diff = prevValue - currValue;
+            if (diff > 0) {
+              difCounter.set(key, diff);
+            }
+          }
+
+          const serializedMap = Object.fromEntries(difCounter);
+          sendResponse({ status: "runFix finished", counter: serializedMap });
+        })();
+        return true; // IMPORTANT: keep message channel open for async sendResponse
 
       case "setRule":
         removeHighlight();
@@ -184,8 +202,6 @@ loadWasmModule().then((mod) => {
               .toUpperCase();
             return [transformedKey, value];
           }));
-        console.log("Sending via getLastDiagnosticCnt", lastDiagnosticCnt); // Map(6)
-        // console.log(serializedMap);
         sendResponse({ lastDiagnosticCnt: serializedMap });
         break;
 
