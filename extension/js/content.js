@@ -1,3 +1,4 @@
+// Migrate all WASM to background.js (?)
 const WASM_MOD_URL = chrome.runtime.getURL('pkg/grs_wasm.js');
 
 // Import Wasm module binding using dynamic import.
@@ -11,8 +12,7 @@ const loadWasmModule = async () => {
   return isOk ? mod : null;
 };
 
-// TODO: Sync with popup.js
-let DEFAULT_RULE_STATES = null;
+
 let lastDiagnosticCnt = null;
 
 function walk(node, iterNode) {
@@ -24,19 +24,12 @@ function walk(node, iterNode) {
 }
 
 loadWasmModule().then((mod) => {
-  if (mod === null) {
-    return;
-  }
-
-  // Init settings
-  const codes = mod.rule_codes();
-  DEFAULT_RULE_STATES = Object.fromEntries(codes.map(rule => [rule, true]));
-  // console.log('Initialized DEFAULT_RULE_STATES to ', DEFAULT_RULE_STATES);
+  if (mod === null) return;
 
   function groupDiagnostics(diagnostics) {
     // Note that the highlighting logic could fail if two diagnostic ranges overlap.
     //
-    // We can not simply iterate the diagnostics, instead we (partially) deal with 
+    // We can not simply iterate the diagnostics, instead we (partially) deal with
     // overlap by highlighting once but showing all kinds at that range.
     const grouped = new Map();
     for (const { kind, range } of diagnostics) {
@@ -74,11 +67,7 @@ loadWasmModule().then((mod) => {
   function removeHighlight() {
     document.querySelectorAll(`.${SPAN_CLASS}`).forEach(span => {
       let parent = span.parentElement;
-
-      while (span.firstChild) {
-        parent.insertBefore(span.firstChild, span);
-      }
-
+      while (span.firstChild) parent.insertBefore(span.firstChild, span);
       parent.removeChild(span);
       parent.normalize();
     });
@@ -86,22 +75,24 @@ loadWasmModule().then((mod) => {
 
   function scanPage() {
     return new Promise((resolve) => {
-      chrome.storage.local.get(["selectedColor", "ruleStates"], (data) => {
+      chrome.storage.local.get(["selectedColor", "rules"], (data) => {
         const color = data.selectedColor || "#FFFF00"; // Default to yellow
-        const ruleStates = data.ruleStates || DEFAULT_RULE_STATES;
-        const counter = scanPageGo(color, ruleStates);
+        const rules = data.rules;
+        const counter = scanPageGo(color, rules);
         resolve(counter);
       });
     });
   }
 
-  function scanPageGo(color, ruleStates) {
-    // console.log(`Running scanPage with color: ${color} and `, ruleStates);
+  function scanPageGo(color, rules) {
     const cnt = new Map();
+    // console.debug("ScanPageGo", rules
+    //   .filter(rule => rule.active)
+    //   .map(rule => rule.code));
 
     const iterNode = (node) => {
       try {
-        const diagnostics = mod.scan_text(node.textContent, ruleStates);
+        const diagnostics = mod.scan_text(node.textContent, rules);
         for (const { kind } of diagnostics) {
           if (!cnt.has(kind)) {
             cnt.set(kind, 0);
@@ -136,10 +127,9 @@ loadWasmModule().then((mod) => {
   }
 
   function fixText() {
-    chrome.storage.local.get(["ruleStates"], (data) => {
-      const ruleStates = data.ruleStates || DEFAULT_RULE_STATES;
+    chrome.storage.local.get(["rules"], (data) => {
       const iterNode = (node) => {
-        node.textContent = mod.fix(node.textContent, ruleStates);
+        node.textContent = mod.fix(node.textContent, data.rules);
       }
       walk(document.body, iterNode);
     });
@@ -182,15 +172,6 @@ loadWasmModule().then((mod) => {
         })();
         return true; // IMPORTANT: keep message channel open for async sendResponse
 
-      case "setRule":
-        removeHighlight();
-        scanPage();
-        break;
-
-      case "getRuleSettings":
-        sendResponse({ ruleSettings: DEFAULT_RULE_STATES })
-        break;
-
       case "getLastDiagnosticCnt":
         // Use codes instead of rules as keys
         const serializedMap = Object.fromEntries(
@@ -206,14 +187,14 @@ loadWasmModule().then((mod) => {
         break;
 
       default:
-        console.warn("[L] Unknown action received:", message.action);
+        console.warn("Unknown action received:", message.action);
     }
 
     sendResponse({ status: `${message.action} finished` });
   });
 
   // console.log("Content script loaded!");
-  // chrome.storage.local.clear(); // For testing without cache
+  // chrome.storage.local.clear(); // For testing without cache - May crash now with background.js
   scanPage();
 });
 

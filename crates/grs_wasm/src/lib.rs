@@ -1,10 +1,9 @@
 #![allow(clippy::missing_errors_doc)]
 
 use grs::diagnostic::{Diagnostic, Fix};
-use grs::registry::{Rule, code_to_rule, rule_to_code};
+use grs::registry::{Rule, code_to_rule, rule_to_code, rule_to_name};
 use grs::tokenizer::Token;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::ops::Range;
 use strum::IntoEnumIterator;
 use wasm_bindgen::JsValue;
@@ -113,28 +112,40 @@ fn all_rules() -> Vec<Rule> {
     Rule::iter().collect()
 }
 
+#[derive(Serialize, Deserialize)]
+struct RuleJs {
+    code: String,
+    name: String,
+    active: bool,
+}
+
 fn load_config(options: JsValue) -> Vec<Rule> {
     if options.is_null() || options.is_undefined() {
         all_rules()
     } else {
-        // options is expected to be: { "MDA": true, "AC": true, ... }
-        let options_map: HashMap<String, bool> =
-            serde_wasm_bindgen::from_value(options).unwrap_or_default();
+        // options is expected to be:
+        // { code: 'MDA', name: 'MissingDoubleAccents', active: true }
+        let rules_js: Vec<RuleJs> = serde_wasm_bindgen::from_value(options).unwrap_or_default();
 
-        options_map
+        rules_js
             .into_iter()
-            // Select keys where the value is true
-            .filter_map(|(key, value)| if value { Some(key) } else { None })
-            // Ignore keys that do not match any rule
-            .filter_map(|code| code_to_rule(&code))
+            .filter(|opt| opt.active)
+            .filter_map(|opt| code_to_rule(&opt.code))
             .collect()
     }
 }
 
 #[wasm_bindgen]
-pub fn rule_codes() -> Result<JsValue, Error> {
-    let all_codes: Vec<_> = all_rules().iter().map(|rule| rule_to_code(*rule)).collect();
-    serde_wasm_bindgen::to_value(&all_codes).map_err(into_error)
+pub fn rules() -> Result<JsValue, Error> {
+    let states: Vec<_> = all_rules()
+        .iter()
+        .map(|&rule| RuleJs {
+            code: rule_to_code(rule),
+            name: rule_to_name(rule).to_string(),
+            active: false,
+        })
+        .collect();
+    serde_wasm_bindgen::to_value(&states).map_err(into_error)
 }
 
 // Reference:
