@@ -291,7 +291,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   Array.from(ruleButtons).forEach(button => {
     button.addEventListener("click", async () => {
       const buttonRuleCode = button.dataset.rule;
-      console.log(buttonRuleCode);
       // Modify the class to apply the CSS (but not contents.js config object!).
       button.classList.toggle("inactive");
       // Get the current states from storage and update

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Grs",
   "description": "Greek rule-based spell checker",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "author": "daxida",
   "minimum_chrome_version": "110",
   "offline_enabled": true,

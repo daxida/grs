@@ -18,8 +18,9 @@ async function getRules() {
         resolve(result.rules);
       } else {
         const defaultRules = getDefaultRules();
-        chrome.storage.local.set({ rules: defaultRules });
-        resolve(defaultRules);
+        chrome.storage.local.set({ rules: defaultRules }, () => {
+          resolve(defaultRules);
+        });
       }
     });
   });
@@ -56,12 +57,8 @@ function handleMessage(msg, _sender, sendResponse) {
 
     case "setRule":
       const { code, active } = msg;
-      try {
-        setRule(code, active);
-        sendResponse({ success: true });
-      } catch (err) {
-        sendResponse({ success: false, error: err.message });
-      }
+      setRule(code, active);
+      sendResponse({ success: true });
       return true;
 
     default:
@@ -77,9 +74,9 @@ async function main() {
   // chrome.storage.local.clear();
 
   await getRules();
-
-  chrome.runtime.onMessage.addListener(handleMessage);
 }
 
+// Listener should be registered before async init
+chrome.runtime.onMessage.addListener(handleMessage);
 main();
 
