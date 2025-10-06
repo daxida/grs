@@ -18,6 +18,7 @@ pub enum Rule {
     MixedScripts,
     AmbiguousChar,
     ForbiddenAccent,
+    ForbiddenDoubleAccent,
     ForbiddenChar,
     Punctuation,
 }
@@ -38,6 +39,7 @@ impl Rule {
                 | MonosyllableAccented
                 | MixedScripts
                 | AmbiguousChar
+                | ForbiddenDoubleAccent
                 | Punctuation
         )
     }

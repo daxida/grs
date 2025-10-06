@@ -1,8 +1,10 @@
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
 use crate::rules::missing_double_accents::PRONOUNS_LOWERCASE;
 use crate::tokenizer::{Doc, Token};
-use grac::{Diacritic, Merge, conc, has_diacritic, is_greek_char, syllabify_with_merge};
+use grac::{
+    Diacritic, Merge, conc, has_diacritic, is_greek_char, remove_diacritic_at, syllabify_with_merge,
+};
 
 // https://el.wiktionary.org/wiki/τίς
 const TIS_VARIANTS: [&str; 13] = [
@@ -94,14 +96,18 @@ fn diacritic_pos(s: &str, diacritic: char, merge: Merge) -> Vec<usize> {
         .collect()
 }
 
-fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
+// Fast discard if possible (10 bytes ~ 5 Greek chars)
+//
+// 12 bytes should be fine for accents over the antepenult, but
+// it is too short for double accents in wrong position. Cf. ρούχά του
+fn skip_heuristic(token: &Token) -> bool {
+    token.text().len() < 10 || !token.text().chars().all(is_greek_char)
+}
+
+fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<Rule> {
     debug_assert!(token.is_greek_word());
 
-    // Fast discard if possible (10 bytes ~ 5 Greek chars)
-    //
-    // 12 bytes should be fine for accents over the antepenult, but
-    // it is too short for double accents in wrong position. Cf. ρούχά του
-    if token.text().len() < 10 || !token.text().chars().all(is_greek_char) {
+    if skip_heuristic(token) {
         return None;
     }
 
@@ -109,8 +115,53 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
 
     // accent before antepenult
     if pos.last().is_some_and(|pos| *pos > 3) {
-        return Some(());
+        return Some(Rule::ForbiddenAccent);
     }
+
+    // double accents with no pronoun
+    // TODO: These should be fixable > remove last acute accent
+    if pos.len() > 1 {
+        // Check that the double accents are in the correct position
+        //
+        // We recompute the pos to not get a false positive on synizesis.
+        // It should be quite cheap since this branch is quite rare already.
+        let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Never);
+        if pos != [1, 3] {
+            return Some(Rule::ForbiddenDoubleAccent);
+        }
+
+        // Compare against the first greek token found
+        if let Some(ntoken) = doc.next_token_greek_word(token) {
+            return if ALLOWED_WORDS_AFTER_DOUBLE_ACCENT.contains(&ntoken.text()) {
+                None
+            } else {
+                Some(Rule::ForbiddenDoubleAccent)
+            };
+        }
+    }
+
+    None
+}
+
+pub fn forbidden_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
+    if token.is_greek_word() && forbidden_accent_opt(token, doc).is_some() {
+        diagnostics.push(Diagnostic {
+            kind: Rule::ForbiddenAccent,
+            range: token.range(),
+            fix: None,
+        });
+    }
+}
+
+fn forbidden_double_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
+    // This is separate from forbidden accent because it is fixable
+    debug_assert!(token.is_greek_word());
+
+    if skip_heuristic(token) {
+        return None;
+    }
+
+    let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Every);
 
     // double accents with no pronoun
     if pos.len() > 1 {
@@ -136,12 +187,16 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
     None
 }
 
-pub fn forbidden_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
-    if token.is_greek_word() && forbidden_accent_opt(token, doc).is_some() {
+pub fn forbidden_double_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic>) {
+    if token.is_greek_word() && forbidden_double_accent_opt(token, doc).is_some() {
+        let without_accent = remove_diacritic_at(token.text(), 1, Diacritic::ACUTE);
         diagnostics.push(Diagnostic {
-            kind: Rule::ForbiddenAccent,
+            kind: Rule::ForbiddenDoubleAccent,
             range: token.range(),
-            fix: None,
+            fix: Some(Fix {
+                replacement: without_accent,
+                range: token.range(),
+            }),
         });
     }
 }
@@ -149,11 +204,17 @@ pub fn forbidden_accent(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnost
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_rule;
+    use crate::{test_fix, test_rule};
 
     macro_rules! test_fa {
         ($name:ident, $text:expr, $expected:expr) => {
             test_rule!($name, forbidden_accent, $text, $expected);
+        };
+    }
+
+    macro_rules! test_fda_fix {
+        ($name:ident, $text:expr, $expected:expr) => {
+            test_fix!($name, &[Rule::ForbiddenDoubleAccent], $text, $expected);
         };
     }
 
@@ -180,6 +241,9 @@ mod tests {
     test_fa!(fa_double_accent_ok3, "και τον στηθόδεσμό της.", true);
     test_fa!(fa_double_accent_ok4, "τὸ παρηγόρημά μου.", true);
     test_fa!(fa_double_accent_nok, "το πρόσωσωπό μου", false);
+
+    test_fda_fix!(fda_fix_base_nok, "το ποκάμισό και", "το ποκάμισο και");
+    test_fda_fix!(fda_fix_base_ok, "το ποκάμισό μου", "το ποκάμισό μου");
 
     // Double accent at wrong position
     test_fa!(fa_double_accent_pos_nok1, "στην καμάρά της", false);

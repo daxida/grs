@@ -44,6 +44,9 @@ fn check_token_with_context<'a>(
     if config.contains(&Rule::ForbiddenAccent) {
         forbidden_accent(token, doc, &mut diagnostics);
     }
+    if config.contains(&Rule::ForbiddenDoubleAccent) {
+        forbidden_double_accent(token, doc, &mut diagnostics);
+    }
     if config.contains(&Rule::Punctuation) {
         punctuation(token, doc, &mut diagnostics);
     }
