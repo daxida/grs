@@ -42,11 +42,10 @@ fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>>
         return None;
     }
 
-    if let Some(ntoken) = doc.next_token_not_whitespace(token) {
-        if token.text() == ntoken.text() {
+    if let Some(ntoken) = doc.next_token_not_whitespace(token)
+        && token.text() == ntoken.text() {
             return Some(ntoken);
         }
-    }
 
     None
 }

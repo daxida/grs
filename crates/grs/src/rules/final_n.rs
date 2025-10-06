@@ -33,19 +33,16 @@ fn starts_with_vowel_or_plosive(token: &Token) -> bool {
 fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_REM.contains(&token.text()) {
         // Treat archaic construction "εις την" as valid
-        if token.text() == "την" {
-            if let Some(ptoken) = doc.prev_token_not_whitespace(token) {
-                if ptoken.text() == "εις" {
+        if token.text() == "την"
+            && let Some(ptoken) = doc.prev_token_not_whitespace(token)
+                && ptoken.text() == "εις" {
                     return None;
                 }
-            }
-        }
 
-        if let Some(ntoken) = doc.next_token_not_whitespace(token) {
-            if ntoken.is_greek_word() && !starts_with_vowel_or_plosive(ntoken) {
+        if let Some(ntoken) = doc.next_token_not_whitespace(token)
+            && ntoken.is_greek_word() && !starts_with_vowel_or_plosive(ntoken) {
                 return Some(());
             }
-        }
     }
     None
 }
@@ -67,13 +64,11 @@ pub fn remove_final_n(token: &Token, doc: &Doc, diagnostics: &mut Vec<Diagnostic
 fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
     if CANDIDATES_ADD.contains(&token.text()) {
         // Treat archaic construction "εν τη" as valid
-        if token.text() == "τη" {
-            if let Some(ptoken) = doc.prev_token_not_whitespace(token) {
-                if ptoken.text() == "εν" {
+        if token.text() == "τη"
+            && let Some(ptoken) = doc.prev_token_not_whitespace(token)
+                && ptoken.text() == "εν" {
                     return None;
                 }
-            }
-        }
 
         let ntoken = doc.next_token_not_whitespace(token)?;
         if starts_with_vowel_or_plosive(ntoken) {

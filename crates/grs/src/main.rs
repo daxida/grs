@@ -31,14 +31,14 @@ impl From<ExitStatus> for ExitCode {
 
 fn read_file(path: &PathBuf) -> Result<String, ExitStatus> {
     std::fs::read_to_string(path).map_err(|err| {
-        eprintln!("Failed to read file {path:?}: {err}");
+        eprintln!("Failed to read file {}: {err}", path.display());
         ExitStatus::Failure
     })
 }
 
 fn write_file(path: &PathBuf, content: &str) -> Result<(), ExitStatus> {
     std::fs::write(path, content).map_err(|err| {
-        eprintln!("Failed to write to file {path:?}: {err}");
+        eprintln!("Failed to write to file {}: {err}", path.display());
         ExitStatus::Failure
     })
 }

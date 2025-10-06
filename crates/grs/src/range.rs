@@ -20,6 +20,9 @@ impl fmt::Debug for TextRange {
 }
 
 impl TextRange {
+    /// # Panics
+    ///
+    /// Panics if `end < start`.
     #[inline]
     pub const fn new(start: TextSize, end: TextSize) -> Self {
         assert!(start <= end);

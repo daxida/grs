@@ -102,12 +102,6 @@ impl DiagnosticJs {
     }
 }
 
-// Proxy of Config (i.e. Vec<Rule>) to be passed between rust and js.
-#[derive(Serialize, Deserialize)]
-struct Options {
-    rules: Vec<String>,
-}
-
 fn all_rules() -> Vec<Rule> {
     Rule::iter().collect()
 }

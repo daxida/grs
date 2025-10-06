@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 
 // TODO:
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "'de: 'a")))]
 pub struct Doc<'a> {
-    src: &'a str,
     tokens: Vec<Token<'a>>,
 }
 
@@ -140,16 +140,12 @@ impl Doc<'_> {
     /// is capitalized is not a solution, since an abbreviation might be followed by
     /// a proper noun, invalidating the logic. Ex. Λεωφ. Κηφισού.
     pub fn is_abbreviation_or_ends_with_dot(&self, token: &Token) -> bool {
-        if let Some(ntoken) = self.next_token_not_whitespace(token) {
-            if ntoken.is_punctuation() {
-                if let Some(npunct_first_char) = ntoken.text().chars().next() {
-                    if ['.', '…'].contains(&npunct_first_char)
-                        || APOSTROPHES.contains(&npunct_first_char)
-                    {
-                        return true;
-                    }
-                }
-            }
+        if let Some(ntoken) = self.next_token_not_whitespace(token)
+            && ntoken.is_punctuation()
+            && let Some(npunct_first_char) = ntoken.text().chars().next()
+            && (['.', '…'].contains(&npunct_first_char) || APOSTROPHES.contains(&npunct_first_char))
+        {
+            return true;
         }
 
         false
@@ -327,7 +323,7 @@ fn split_whitespace(text: &str) -> impl Iterator<Item = (SplitKind, &str)> {
 // * marginal (~10%) performance gains can be obtained by using the Logos library
 //   with unsafe allowed to replace the whitespace splitting logic. Without unsafe
 //   the performance seems identical. It is probably not worth the dependency.
-pub fn tokenize(text: &str) -> Doc {
+pub fn tokenize(text: &str) -> Doc<'_> {
     let mut end = 0;
     let mut index = 0;
     let mut tokens = Vec::new();
@@ -383,7 +379,7 @@ pub fn tokenize(text: &str) -> Doc {
         }
     }
 
-    Doc { src: text, tokens }
+    Doc { tokens }
 }
 
 #[cfg(test)]

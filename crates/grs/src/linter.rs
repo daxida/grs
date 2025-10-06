@@ -289,12 +289,11 @@ pub fn fix(text: &str, config: Config) -> (String, Vec<String>, Counter) {
         for (rule, fix) in rfixes {
             // May happen if we push some rules due to priority
             // We skip this fix.
-            if let Some(last_pos) = last_pos {
-                if last_pos > fix.range.start() {
+            if let Some(last_pos) = last_pos
+                && last_pos > fix.range.start() {
                     eprintln!("Break due to disordered fixes");
                     break;
                 }
-            }
 
             *fixed.entry(rule).or_insert(0) += 1;
 
