@@ -77,10 +77,10 @@ fn is_multisyllable_not_accented(token: &Token) -> bool {
 // ** Can appear on capitalized position.
 // https://el.wiktionary.org/wiki/προτακτικό
 #[rustfmt::skip]
-const PROSTAKTIKOI: [&str; 24] = with_capitalized!([
+const PROSTAKTIKOI: [&str; 26] = with_capitalized!([
     "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
-    "κυρα", "μαστρο", "μπαρμπα", "παπα", "χατζη",
-    "ψευτο",
+    "κυρα", "κερα", "μαστρο", "μπαρμπα", "παπα",
+    "χατζη", "ψευτο",
 ]);
 
 const fn is_dash(ch: char) -> bool {
@@ -256,5 +256,6 @@ mod tests {
     test_multi!(multi_prostatiko3, "παπα - Ευθύμιο", true);
     test_multi!(multi_prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
     test_multi!(multi_prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
-    test_multi!(multi_prostatiko6_dash, "τον μπαρμπα – Δημητρό", true);
+    test_multi!(multi_prostatiko6, "τον μπαρμπα – Δημητρό", true);
+    test_multi!(multi_prostatiko7, "Η κερα - Κατερίνα", true);
 }
