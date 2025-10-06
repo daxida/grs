@@ -84,7 +84,12 @@ function createRuleButtons(rulesContainer, rules) {
   rulesContainer.appendChild(table);
 }
 
-function updateRuleButtonCounters() {
+function getRuleButtonFromCode(code) {
+  return document.querySelector(`button[data-rule="${code}"]`);
+}
+
+// Update error counters in the popup
+function updateRuleCounters() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length === 0) return;
     chrome.tabs.sendMessage(tabs[0].id, { action: "getLastDiagnosticCnt" }, (response) => {
@@ -97,7 +102,7 @@ function updateRuleButtonCounters() {
       });
 
       for (const key in response.lastDiagnosticCnt) {
-        const button = document.querySelector(`button[data-rule="${key}"]`);
+        const button = getRuleButtonFromCode(key);
         const row = button.closest("tr");
         const counterCell = row.querySelector(".counter-cell");
 
@@ -112,11 +117,7 @@ function updateRuleButtonCounters() {
 function runScanAndUpdateCounters() {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs.length === 0) return;
-    chrome.tabs.sendMessage(
-      tabs[0].id,
-      { action: "runScan" },
-      updateRuleButtonCounters
-    );
+    chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, updateRuleCounters);
   });
 }
 
@@ -141,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   const rulesContainer = document.querySelector(".rules");
   createRuleButtons(rulesContainer, rules);
 
-  updateRuleButtonCounters();
+  updateRuleCounters();
 
   const colorPicker = document.getElementById('color-picker');
   const checkButton = document.getElementById("check-btn");
@@ -176,7 +177,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       if (tabs.length === 0) return;
       chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, () => {
         if (chrome.runtime.lastError) return;
-        updateRuleButtonCounters();
+        updateRuleCounters();
       });
 
       chrome.tabs.sendMessage(tabs[0].id, { action: "getLastDiagnosticCnt" }, (response) => {
@@ -204,7 +205,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
       chrome.tabs.sendMessage(tabs[0].id, { action: "runScan" }, () => {
         if (chrome.runtime.lastError) return;
-        updateRuleButtonCounters();
+        updateRuleCounters();
       });
     });
   });
@@ -229,7 +230,7 @@ document.addEventListener('DOMContentLoaded', async function() {
           showFeedback("No errors found", "yellow");
         }
 
-        updateRuleButtonCounters();
+        updateRuleCounters();
       });
     });
   });
@@ -238,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   let flipState = true;
 
   // Update flipState on popup load (in order to not show Disable All, when
-  // all the rules where already disabled beforehand).
+  // all the rules were already disabled).
   chrome.storage.local.get('rules', (result) => {
     const rules = result.rules;
     const allDisabled = rules.every(rule => !rule.active);
@@ -256,21 +257,17 @@ document.addEventListener('DOMContentLoaded', async function() {
       const rules = result.rules;
       // Update button CSS
       for (const rule of rules) {
-        rule.active = flipState;
-        const button = document.querySelector(`button[data-rule="${rule.code}"]`);
+        const button = getRuleButtonFromCode(rule.code);
         button.classList.toggle("inactive", !flipState);
+        rule.active = flipState;
       }
       chrome.storage.local.set({ rules });
     });
-    updateToggleButtonText(flipRulesButton, flipState);
+    flipRulesButton.textContent = flipState ? "Enable All" : "Disable All";
     flipState = !flipState;
     runScanAndUpdateCounters();
     showFeedback(flipState ? "\u{1F31E} Enabled all" : "\u{1F634} Disabled all", "green");
   });
-
-  function updateToggleButtonText(button, state) {
-    button.textContent = state ? "Enable All" : "Disable All";
-  }
 
   // * Button - RESET RULES
   resetRulesButton.addEventListener("click", async function() {
@@ -278,7 +275,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       const rules = response.rules;
       // Update button CSS
       for (const rule of rules) {
-        const button = document.querySelector(`button[data-rule="${rule.code}"]`);
+        const button = getRuleButtonFromCode(rule.code);
         button.classList.toggle("inactive", !rule.active);
       }
       chrome.storage.local.set({ rules });
