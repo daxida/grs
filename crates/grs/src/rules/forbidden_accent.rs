@@ -104,7 +104,7 @@ fn skip_heuristic(token: &Token) -> bool {
     token.text().len() < 10 || !token.text().chars().all(is_greek_char)
 }
 
-fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<Rule> {
+fn forbidden_accent_opt(token: &Token, _doc: &Doc) -> Option<()> {
     debug_assert!(token.is_greek_word());
 
     if skip_heuristic(token) {
@@ -115,11 +115,10 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<Rule> {
 
     // accent before antepenult
     if pos.last().is_some_and(|pos| *pos > 3) {
-        return Some(Rule::ForbiddenAccent);
+        return Some(());
     }
 
-    // double accents with no pronoun
-    // TODO: These should be fixable > remove last acute accent
+    // Multiple accents
     if pos.len() > 1 {
         // Check that the double accents are in the correct position
         //
@@ -127,16 +126,7 @@ fn forbidden_accent_opt(token: &Token, doc: &Doc) -> Option<Rule> {
         // It should be quite cheap since this branch is quite rare already.
         let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Never);
         if pos != [1, 3] {
-            return Some(Rule::ForbiddenDoubleAccent);
-        }
-
-        // Compare against the first greek token found
-        if let Some(ntoken) = doc.next_token_greek_word(token) {
-            return if ALLOWED_WORDS_AFTER_DOUBLE_ACCENT.contains(&ntoken.text()) {
-                None
-            } else {
-                Some(Rule::ForbiddenDoubleAccent)
-            };
+            return Some(());
         }
     }
 
@@ -163,7 +153,7 @@ fn forbidden_double_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
 
     let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Every);
 
-    // double accents with no pronoun
+    // Multiple accents
     if pos.len() > 1 {
         // Check that the double accents are in the correct position
         //
@@ -171,7 +161,7 @@ fn forbidden_double_accent_opt(token: &Token, doc: &Doc) -> Option<()> {
         // It should be quite cheap since this branch is quite rare already.
         let pos = diacritic_pos(token.text(), Diacritic::ACUTE, Merge::Never);
         if pos != [1, 3] {
-            return Some(());
+            return None;
         }
 
         // Compare against the first greek token found
