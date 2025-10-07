@@ -102,20 +102,21 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
 
     if let Some(ptoken) = doc.prev_token_not_whitespace(token)
         && ptoken.is_punctuation()
-            && let Some(ppunct_first_char) = ptoken.text().chars().next()
-                && APOSTROPHES.contains(&ppunct_first_char) {
-                    return None;
-                }
+        && let Some(ppunct_first_char) = ptoken.text().chars().next()
+        && APOSTROPHES.contains(&ppunct_first_char)
+    {
+        return None;
+    }
     if let Some(ntoken) = doc.next_token_not_whitespace(token)
         && ntoken.is_punctuation()
-            && let Some(npunct_first_char) = ntoken.text().chars().next()
-                && (APOSTROPHES.contains(&npunct_first_char)
-                    || (PROSTAKTIKOI.contains(&token.text()) && is_dash(npunct_first_char)))
-                // Maybe just ignoring all dashes makes more sense
-                // || is_dash(npunct_first_char)
-                {
-                    return None;
-                }
+        && let Some(npunct_first_char) = ntoken.text().chars().next()
+        && (APOSTROPHES.contains(&npunct_first_char)
+            || (PROSTAKTIKOI.contains(&token.text()) && is_dash(npunct_first_char)))
+    // Maybe just ignoring all dashes makes more sense
+    // || is_dash(npunct_first_char)
+    {
+        return None;
+    }
 
     if is_multisyllable_not_accented(token) {
         return Some(());

@@ -6,7 +6,7 @@ use crate::tokenizer::{Doc, Token};
 
 // Based on common expressions
 #[rustfmt::skip]
-const DUPLICATED_WORD_EXCEPTIONS: [&str; 44] = [
+const DUPLICATED_WORD_EXCEPTIONS: [&str; 48] = [
     "κάτω", "γύρω", "μπροστά", "πλάι", "πλάγι", "πέρα", "πάνω", "κάτω",
     "λίγο", "λίγα", "πολύ", "πάρα",
     "καλά",
@@ -25,6 +25,8 @@ const DUPLICATED_WORD_EXCEPTIONS: [&str; 44] = [
     "τσίμα",
     "χα",
     "φύγει",
+    // https://www.wordreference.com/gren/κομμάτι-κομμάτι
+    "σταλιά", "κομμάτι", "τμήμα", "βήμα"
 ];
 
 fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>> {
@@ -43,9 +45,10 @@ fn duplicated_word_opt<'a>(token: &Token, doc: &'a Doc) -> Option<&'a Token<'a>>
     }
 
     if let Some(ntoken) = doc.next_token_not_whitespace(token)
-        && token.text() == ntoken.text() {
-            return Some(ntoken);
-        }
+        && token.text() == ntoken.text()
+    {
+        return Some(ntoken);
+    }
 
     None
 }

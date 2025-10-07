@@ -35,14 +35,17 @@ fn remove_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
         // Treat archaic construction "εις την" as valid
         if token.text() == "την"
             && let Some(ptoken) = doc.prev_token_not_whitespace(token)
-                && ptoken.text() == "εις" {
-                    return None;
-                }
+            && ptoken.text() == "εις"
+        {
+            return None;
+        }
 
         if let Some(ntoken) = doc.next_token_not_whitespace(token)
-            && ntoken.is_greek_word() && !starts_with_vowel_or_plosive(ntoken) {
-                return Some(());
-            }
+            && ntoken.is_greek_word()
+            && !starts_with_vowel_or_plosive(ntoken)
+        {
+            return Some(());
+        }
     }
     None
 }
@@ -66,9 +69,10 @@ fn add_final_n_opt(token: &Token, doc: &Doc) -> Option<()> {
         // Treat archaic construction "εν τη" as valid
         if token.text() == "τη"
             && let Some(ptoken) = doc.prev_token_not_whitespace(token)
-                && ptoken.text() == "εν" {
-                    return None;
-                }
+            && ptoken.text() == "εν"
+        {
+            return None;
+        }
 
         let ntoken = doc.next_token_not_whitespace(token)?;
         if starts_with_vowel_or_plosive(ntoken) {
