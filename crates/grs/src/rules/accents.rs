@@ -77,14 +77,20 @@ fn is_multisyllable_not_accented(token: &Token) -> bool {
 // ** Can appear on capitalized position.
 // https://el.wiktionary.org/wiki/προτακτικό
 #[rustfmt::skip]
-const PROSTAKTIKOI: [&str; 26] = with_capitalized!([
-    "αγια", "αγιο", "αϊ", "γερο", "γρια", "θεια",
+const PROTAKTIKOI: [&str; 30] = with_capitalized!([
+    "αγια", "αγιο", "αγιας", "αγιου", "αϊ",
+    "γερο", "γρια", "θεια",
     "κυρα", "κερα", "μαστρο", "μπαρμπα", "παπα",
     "χατζη", "ψευτο",
 ]);
 
 const fn is_dash(ch: char) -> bool {
     matches!(ch, '–' | '-')
+}
+
+// https://el.wiktionary.org/wiki/προτακτικό
+pub fn is_protaktiko(token: &Token, npunct_first_char: char) -> bool {
+    PROTAKTIKOI.contains(&token.text()) && is_dash(npunct_first_char)
 }
 
 fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
@@ -110,10 +116,8 @@ fn multisyllable_not_accented_opt(token: &Token, doc: &Doc) -> Option<()> {
     if let Some(ntoken) = doc.next_token_not_whitespace(token)
         && ntoken.is_punctuation()
         && let Some(npunct_first_char) = ntoken.text().chars().next()
-        && (APOSTROPHES.contains(&npunct_first_char)
-            || (PROSTAKTIKOI.contains(&token.text()) && is_dash(npunct_first_char)))
-    // Maybe just ignoring all dashes makes more sense
-    // || is_dash(npunct_first_char)
+        // Maybe just ignoring all dashes makes more sense
+        && (APOSTROPHES.contains(&npunct_first_char) || (is_protaktiko(token, npunct_first_char)))
     {
         return None;
     }
@@ -245,12 +249,14 @@ mod tests {
     test_multi!(multi_leo1, "ξύλου μόλιβδόν φασιν", true);
     test_multi!(multi_leo2, "σώματά φασι", true);
 
-    // Prostaktikoi
-    test_multi!(multi_prostatiko1, "γερο - Ευθύμιο", true);
-    test_multi!(multi_prostatiko2, "γερο-Ευθύμιο", true);
-    test_multi!(multi_prostatiko3, "παπα - Ευθύμιο", true);
-    test_multi!(multi_prostatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
-    test_multi!(multi_prostatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
-    test_multi!(multi_prostatiko6, "τον μπαρμπα – Δημητρό", true);
-    test_multi!(multi_prostatiko7, "Η κερα - Κατερίνα", true);
+    // Protaktikoi
+    test_multi!(multi_protatiko1, "γερο - Ευθύμιο", true);
+    test_multi!(multi_protatiko2, "γερο-Ευθύμιο", true);
+    test_multi!(multi_protatiko3, "παπα - Ευθύμιο", true);
+    test_multi!(multi_protatiko4, "διέκοπτε ο σιορ- Αμπρουζής", true);
+    test_multi!(multi_protatiko5, "τούτος ο ψευτο - Εγγλέζος.", true);
+    test_multi!(multi_protatiko6, "τον μπαρμπα – Δημητρό", true);
+    test_multi!(multi_protatiko7, "Η κερα - Κατερίνα", true);
+    test_multi!(multi_protatiko8, "Mένει στην Aγια-Σοφιά", true);
+    test_multi!(multi_protatiko9, "χωριό της Αγιας - Μαρίνας", true);
 }

@@ -4,6 +4,7 @@
 
 use crate::diagnostic::{Diagnostic, Fix};
 use crate::registry::Rule;
+use crate::rules::accents::is_protaktiko;
 use crate::tokenizer::{Doc, Token};
 use grac::{add_acute_at, has_any_diacritic, is_vowel};
 
@@ -27,7 +28,16 @@ fn missing_accent_capital_opt(token: &Token, doc: &Doc) -> Option<()> {
         && is_vowel(token.text().chars().next().unwrap())
         && !doc.is_abbreviation_or_ends_with_dot(token)
     {
-        Some(())
+        // Ensure that token is not a protaktiko
+        if let Some(ntoken) = doc.next_token_not_whitespace(token)
+            && ntoken.is_punctuation()
+            && let Some(npunct_first_char) = ntoken.text().chars().next()
+            && is_protaktiko(token, npunct_first_char)
+        {
+            None
+        } else {
+            Some(())
+        }
     } else {
         None
     }
@@ -64,4 +74,6 @@ mod tests {
     test_mac!(base_wrong, "Αλλο", false);
     test_mac!(starts_with_consonant, "Χγεννα", true);
     test_mac!(abbreviation, "(Κύρ. Αναβ. Ι 7,3)", true);
+    test_mac!(protaktiko1, "Mένει στην Aγια - Σοφιά", true);
+    test_mac!(protaktiko2, "χωριό της Αγιας - Μαρίνας", true);
 }
