@@ -1,0 +1,7 @@
+/texts/
+
+target/
+
+__pycache__
+
+perf.data*
