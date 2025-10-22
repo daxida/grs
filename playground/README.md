@@ -1,12 +1,6 @@
-[Here](https://daxida.github.io/test_grs/)
+[Playground link](https://daxida.github.io/grs/)
 
-To dev locally (requires access to the, at the moment private, `grs` library):
-```
-just build
-npm run dev
-```
+Minimal playground for testing `grs`.
 
-To deploy:
-```
-npm run deploy
-```
+Use `npm run dev` to develop locally and `npm run deploy` to deploy.
+
