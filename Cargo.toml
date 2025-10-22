@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.90"
 repository = "https://github.com/daxida/grs"
 authors = ["daxida"]
 license = "MIT"
